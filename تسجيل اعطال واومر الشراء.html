@@ -1,0 +1,672 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>نظام إدارة الأعطال وأوامر الشراء — الكهرباء</title>
+<style>
+  :root{--primary:#0A4C88;--accent:#08365F;--muted:#666}
+  body{font-family:Arial, Tahoma, sans-serif;margin:0;background:#f4f6f8;color:#111}
+  header{background:var(--primary);color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
+  header h1{margin:0;font-size:18px}
+  nav{display:flex;gap:6px;background:var(--accent);padding:8px}
+  nav button{background:transparent;border:0;color:#fff;padding:8px 12px;border-radius:6px;cursor:pointer}
+  nav button.active{background:#0d5aa2}
+  section{padding:16px}
+  .box{background:#fff;padding:12px;border-radius:8px;box-shadow:0 1px 6px rgba(0,0,0,0.05);margin-bottom:12px}
+  label{display:block;margin-top:8px;font-size:14px}
+  input,select,textarea{width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;box-sizing:border-box}
+  textarea{min-height:70px}
+  .btn{background:var(--primary);color:#fff;border:0;padding:8px 10px;border-radius:6px;cursor:pointer}
+  .btn.ghost{background:#eee;color:#111}
+  .row{display:flex;gap:8px;align-items:center}
+  .row .flex{flex:1}
+  table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
+  th,td{border:1px solid #ddd;padding:8px;text-align:right;vertical-align:top}
+  th{background:#0A4C88;color:#fff}
+  .actions button{margin-left:6px}
+  .status-okay{background:#c4f7c4}
+  .status-working{background:#fff3b0}
+  .status-wait-company{background:#ffd59e}
+  .status-wait-part{background:#ffb4b4}
+  #tiles{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  .tile{flex:1 1 140px;background:#fff;padding:10px;border-radius:6px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.04)}
+  canvas{background:#fff;border-radius:6px;padding:8px}
+  @media print{
+    nav,.no-print,.actions,.controls{display:none!important}
+    body{background:#fff}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>نظام إدارة الأعطال وأوامر الشراء — الكهرباء</h1>
+  <div style="font-size:13px;color:#fff">وضع أوفلاين · يحفظ محليًا</div>
+</header>
+
+<nav>
+  <button id="navFaults">الأعطال</button>
+  <button id="navOrders">أوامر الشراء</button>
+  <button id="navTrash">سلة المحذوفات</button>
+  <button id="navDash">Dashboard</button>
+</nav>
+
+<section>
+  <!-- FAULTS -->
+  <div id="page_faults" class="page">
+    <div class="box">
+      <h3>تسجيل / تعديل عطل</h3>
+      <div id="form">
+        <label>اسم الماكينة</label><input id="machine" />
+        <label>رقم الخط</label><input id="line" />
+        <label>اسم القائم بالعطل</label><input id="person" />
+        <label>وصف العطل</label><textarea id="description"></textarea>
+        <label>الوردية</label><select id="shift"><option>صباحية</option><option>مسائية</option><option>ليلية</option></select>
+        <label>التاريخ</label><input type="date" id="date" />
+        <label>كود المخزن (L Number)</label><input id="lcode" />
+        <label>اسم قطعة الغيار</label><input id="partName" placeholder="نص حر" />
+        <label>كمية قطعة الغيار</label><input type="number" id="partQty" min="0" value="0" />
+        <label>حالة العطل</label>
+        <select id="status">
+          <option>تم الإصلاح</option>
+          <option>جاري الإصلاح</option>
+          <option>تحت التجربة</option>
+          <option>بانتظار رد الشركة</option>
+          <option>بانتظار قطعة الغيار</option>
+        </select>
+        <div class="row" style="margin-top:10px">
+          <button id="addBtn" class="btn">إضافة العطل</button>
+          <button class="btn ghost" id="clearBtn">مسح الحقول</button>
+          <div class="flex"></div>
+          <button class="btn" id="exportCsvAll">تصدير CSV</button>
+          <button class="btn" id="exportDocAll">تصدير Word</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="box">
+      <div class="row" style="margin-bottom:8px">
+        <input id="search" placeholder="بحث باسم الماكينة، وصف، القائم…" style="flex:1" />
+        <input id="filterStatus" placeholder="فلتر الحالة (مثال: تم الإصلاح)" style="width:220px" />
+        <button class="btn ghost" id="applyFiltersBtn">تطبيق</button>
+        <button class="btn ghost" id="clearFiltersBtn">إعادة</button>
+      </div>
+
+      <table id="faultTable">
+        <thead>
+          <tr>
+            <th>#</th><th>الماكينة</th><th>الخط</th><th>القائم</th><th>الوصف</th><th>الوردية</th><th>التاريخ</th><th>L Number</th><th>اسم القطعة</th><th>الكمية</th><th>الحالة</th><th class="no-print">أوامر</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
+      <!-- print / PDF button placed below table as requested (B) -->
+      <div style="margin-top:10px; text-align:left;">
+        <button class="btn" id="printPdfAll">طباعة / حفظ كـ PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ORDERS -->
+  <div id="page_orders" class="page" style="display:none">
+    <div class="box">
+      <h3>أمر شراء / توريد</h3>
+      <label>رقم أمر الشراء</label><input id="orderNum" />
+      <label>رقم أمر التوريد</label><input id="supplyNum" />
+      <label>التاريخ</label><input type="date" id="orderDate" />
+      <label>القائم على أمر الشراء</label><input id="orderPerson" />
+      <label>تفاصيل أمر الشراء</label><textarea id="orderDetails" placeholder="تفاصيل أو وصف أمر الشراء"></textarea>
+      <div class="row" style="margin-top:10px">
+        <button class="btn" id="addOrderBtn">إضافة أمر</button>
+        <button class="btn ghost" id="clearOrderBtn">مسح</button>
+        <div class="flex"></div>
+        <button class="btn" id="exportOrdersCsv">تصدير CSV</button>
+        <button class="btn" id="exportOrdersDoc">تصدير Word</button>
+      </div>
+    </div>
+
+    <div class="box">
+      <div class="row" style="margin-bottom:8px">
+        <input id="searchOrder" placeholder="بحث برقم الأمر أو القائم…" style="flex:1" />
+        <button class="btn ghost" id="applyOrderFilterBtn">تطبيق</button>
+      </div>
+      <table id="orderTable">
+        <thead><tr><th>أمر الشراء</th><th>توريد</th><th>التاريخ</th><th>القائم</th><th>تفاصيل الأمر</th><th class="no-print">أوامر</th></tr></thead>
+        <tbody></tbody>
+      </table>
+
+      <!-- print / PDF button placed below table as requested (B) -->
+      <div style="margin-top:10px; text-align:left;">
+        <button class="btn" id="printOrdersBtn">طباعة / حفظ كـ PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRASH -->
+  <div id="page_trash" class="page" style="display:none">
+    <div class="box">
+      <h3>سلة المحذوفات</h3>
+      <div style="margin-bottom:8px">
+        <button class="btn ghost" id="emptyTrashBtn">حذف نهائي لكل المحذوفات</button>
+      </div>
+      <h4>أعطال محذوفة</h4>
+      <table id="trashFaults"><thead><tr><th>#</th><th>بيان</th><th class="no-print">أوامر</th></tr></thead><tbody></tbody></table>
+      <h4 style="margin-top:12px">أوامر محذوفة</h4>
+      <table id="trashOrders"><thead><tr><th>أمر</th><th>توريد</th><th class="no-print">أوامر</th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="page_dash" class="page" style="display:none">
+    <div id="tiles" style="margin-bottom:12px"></div>
+    <div class="box" style="max-width:800px;margin:0 auto">
+      <canvas id="pie" width="800" height="300"></canvas>
+      <div style="margin-top:12px">
+        <table id="dashTable" style="width:100%"><thead><tr><th>الحالة</th><th>العدد</th></tr></thead><tbody></tbody></table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+const API_URL = 'https://script.google.com/macros/s/AKfycbzIwszIpDBo_ATLj4-sRT6hkpuIOq9Ef0r44YmpQwU7am4R583ETYTcdi1g7Ra8sc7v/exec';
+/* storage keys */
+const K_FAULTS='faults_v2_final', K_ORDERS='orders_v2_final', K_TRASH='trash_v2_final';
+
+/* load */
+let faults = JSON.parse(localStorage.getItem(K_FAULTS)||'[]');
+let orders = JSON.parse(localStorage.getItem(K_ORDERS)||'[]');
+let trash = JSON.parse(localStorage.getItem(K_TRASH)||'{"faults":[],"orders":[]}');
+
+/* ui refs */
+const navFaults = document.getElementById('navFaults');
+const navOrders = document.getElementById('navOrders');
+const navTrash = document.getElementById('navTrash');
+const navDash = document.getElementById('navDash');
+
+navFaults.onclick = ()=>show('faults');
+navOrders.onclick = ()=>show('orders');
+navTrash.onclick = ()=>show('trash');
+navDash.onclick = ()=>show('dash');
+
+function show(page){
+  document.querySelectorAll('.page').forEach(p=>p.style.display='none');
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  if(page==='faults'){ document.getElementById('page_faults').style.display='block'; navFaults.classList.add('active'); }
+  if(page==='orders'){ document.getElementById('page_orders').style.display='block'; navOrders.classList.add('active'); }
+  if(page==='trash'){ document.getElementById('page_trash').style.display='block'; navTrash.classList.add('active'); }
+  if(page==='dash'){ document.getElementById('page_dash').style.display='block'; navDash.classList.add('active'); drawDashboard(); }
+}
+show('faults');
+
+/* helpers */
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function saveAll(){ localStorage.setItem(K_FAULTS, JSON.stringify(faults)); localStorage.setItem(K_ORDERS, JSON.stringify(orders)); localStorage.setItem(K_TRASH, JSON.stringify(trash)); }
+function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* render functions */
+function renderFaultTable(){
+  const tbody = document.querySelector('#faultTable tbody'); tbody.innerHTML='';
+  faults.forEach((f,i)=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${i+1}</td>
+      <td>${escapeHtml(f.machine)}</td>
+      <td>${escapeHtml(f.line)}</td>
+      <td>${escapeHtml(f.person)}</td>
+      <td>${escapeHtml(f.description)}</td>
+      <td>${escapeHtml(f.shift)}</td>
+      <td>${escapeHtml(f.date)}</td>
+      <td>${escapeHtml(f.lcode)}</td>
+      <td>${escapeHtml(f.partName)}</td>
+      <td>${escapeHtml(f.partQty)}</td>
+      <td class="status-cell">${escapeHtml(f.status)}</td>
+      <td class="no-print actions">
+        <button class="btn ghost" onclick="startEditFault('${f.id}')">تعديل</button>
+        <button class="btn" onclick="moveToTrashFault('${f.id}')">حذف</button>
+      </td>`;
+    const sc = tr.querySelector('.status-cell');
+    if(f.status==='تم الإصلاح') sc.classList.add('status-okay');
+    else if(f.status==='جاري الإصلاح' || f.status==='تحت التجربة') sc.classList.add('status-working');
+    else if(f.status==='بانتظار رد الشركة') sc.classList.add('status-wait-company');
+    else if(f.status==='بانتظار قطعة الغيار') sc.classList.add('status-wait-part');
+    tbody.appendChild(tr);
+  });
+  saveAll();
+}
+
+function renderOrderTable(){
+  const tbody = document.querySelector('#orderTable tbody'); tbody.innerHTML='';
+  orders.forEach((o,i)=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${escapeHtml(o.orderNum)}</td><td>${escapeHtml(o.supplyNum)}</td><td>${escapeHtml(o.date)}</td><td>${escapeHtml(o.person)}</td><td>${escapeHtml(o.details||'')}</td>
+      <td class="no-print actions"><button class="btn ghost" onclick="startEditOrder('${o.id}')">تعديل</button><button class="btn" onclick="moveToTrashOrder('${o.id}')">حذف</button></td>`;
+    tbody.appendChild(tr);
+  });
+  saveAll();
+}
+
+function renderTrash(){
+  const tf = document.querySelector('#trashFaults tbody'); tf.innerHTML='';
+  trash.faults.forEach((f,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML = `<td>${i+1} - ${escapeHtml(f.machine)} (${escapeHtml(f.date)})</td>
+      <td class="no-print actions"><button class="btn" onclick="restoreFault('${f.id}')">استرجاع</button><button class="btn ghost" onclick="permanentDeleteFault('${f.id}')">حذف نهائي</button></td>`;
+    tf.appendChild(tr);
+  });
+  const to = document.querySelector('#trashOrders tbody'); to.innerHTML='';
+  trash.orders.forEach((o,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML = `<td>${escapeHtml(o.orderNum)} - ${escapeHtml(o.date)}</td><td class="no-print actions"><button class="btn" onclick="restoreOrder('${o.id}')">استرجاع</button><button class="btn ghost" onclick="permanentDeleteOrder('${o.id}')">حذف نهائي</button></td>`;
+    to.appendChild(tr);
+  });
+}
+
+/* CRUD faults */
+let editingFaultId = null;
+document.getElementById('addBtn').addEventListener('click', onAddOrSave);
+document.getElementById('clearBtn').addEventListener('click', clearFaultForm);
+function clearFaultForm(){
+  editingFaultId = null;
+  document.getElementById('machine').value=''; document.getElementById('line').value=''; document.getElementById('person').value=''; document.getElementById('description').value=''; document.getElementById('shift').value='صباحية'; document.getElementById('date').value=''; document.getElementById('lcode').value=''; document.getElementById('partName').value=''; document.getElementById('partQty').value=0; document.getElementById('status').value='تم الإصلاح'; document.getElementById('addBtn').innerText='إضافة العطل';
+}
+
+function onAddOrSave(){
+  if(editingFaultId) return saveEditFault();
+  const f = {
+    id: uid(),
+    machine: document.getElementById('machine').value.trim(),
+    line: document.getElementById('line').value.trim(),
+    person: document.getElementById('person').value.trim(),
+    description: document.getElementById('description').value.trim(),
+    shift: document.getElementById('shift').value,
+    date: document.getElementById('date').value,
+    lcode: document.getElementById('lcode').value.trim(),
+    partName: document.getElementById('partName').value.trim(),
+    partQty: Number(document.getElementById('partQty').value||0),
+    status: document.getElementById('status').value
+  };
+  fetch(API_URL, {
+  method: 'POST',
+  // headers: {'Content-Type': 'application/json'},
+  body: JSON.stringify({ kind: 'fault', op: 'add', data: f })
+}).then(r => r.json())
+  .then(res => {
+    if (!res.ok) alert('في مشكلة في حفظ العطل على السيرفر، هيتحفظ Local بس');
+  }).catch(err => {
+    console.error(err);
+    alert('السيرفر مش متاح حاليًا، هيتحفظ Local بس');
+  });
+  faults.unshift(f);
+  clearFaultForm(); 
+  renderFaultTable(); 
+  drawDashboard(); 
+  show('faults');
+}
+
+/* edit fault */
+function startEditFault(id){
+  const f = faults.find(x=>x.id===id); if(!f) return alert('السجل غير موجود'); editingFaultId = id;
+  document.getElementById('machine').value = f.machine;
+  document.getElementById('line').value = f.line;
+  document.getElementById('person').value = f.person;
+  document.getElementById('description').value = f.description;
+  document.getElementById('shift').value = f.shift;
+  document.getElementById('date').value = f.date;
+  document.getElementById('lcode').value = f.lcode;
+  document.getElementById('partName').value = f.partName;
+  document.getElementById('partQty').value = f.partQty;
+  document.getElementById('status').value = f.status;
+  document.getElementById('addBtn').innerText = 'حفظ التعديل';
+}
+
+function saveEditFault(){
+  const idx = faults.findIndex(x=>x.id===editingFaultId); if(idx===-1) return alert('خطأ التعديل');
+
+  // حدّث في المصفوفة
+  faults[idx].machine = document.getElementById('machine').value.trim();
+  faults[idx].line = document.getElementById('line').value.trim();
+  faults[idx].person = document.getElementById('person').value.trim();
+  faults[idx].description = document.getElementById('description').value.trim();
+  faults[idx].shift = document.getElementById('shift').value;
+  faults[idx].date = document.getElementById('date').value;
+  faults[idx].lcode = document.getElementById('lcode').value.trim();
+  faults[idx].partName = document.getElementById('partName').value.trim();
+  faults[idx].partQty = Number(document.getElementById('partQty').value||0);
+  faults[idx].status = document.getElementById('status').value;
+
+   // ابعت Update للـ Sheet
+  const f = faults[idx];
+  fetch(API_URL, {
+    method: 'POST',
+    body: JSON.stringify({ kind: 'fault', op: 'update', data: f })
+  }).then(r=>r.json())
+    .then(res => {
+      if(!res.ok) alert('التعديل لم يُحفظ على السيرفر (Sheet)');
+    })
+    .catch(err => console.error('fault update error', err));
+
+  editingFaultId = null;
+  clearFaultForm(); 
+  renderFaultTable(); 
+  drawDashboard(); 
+  show('faults');
+}
+
+function moveToTrashFault(id){
+  const idx = faults.findIndex(x=>x.id===id); if(idx===-1) return;
+  trash.faults.unshift(faults.splice(idx,1)[0]); saveAll(); renderFaultTable(); renderTrash(); drawDashboard();
+}
+function restoreFault(id){ const idx = trash.faults.findIndex(x=>x.id===id); if(idx===-1) return; faults.unshift(trash.faults.splice(idx,1)[0]); saveAll(); renderFaultTable(); renderTrash(); drawDashboard(); }
+// function permanentDeleteFault(id){ const idx = trash.faults.findIndex(x=>x.id===id); if(idx===-1) return; if(!confirm('حذف نهائي؟')) return; trash.faults.splice(idx,1); saveAll(); renderTrash(); }
+function permanentDeleteFault(id){
+  const idx = trash.faults.findIndex(x=>x.id===id); 
+  if(idx===-1) return;
+  if(!confirm('حذف نهائي؟')) return;
+
+  // ابعت Delete للـ Sheet
+  fetch(API_URL, {
+    method: 'POST',
+    body: JSON.stringify({ kind: 'fault', op: 'delete', data: { id } })
+  }).then(r=>r.json())
+    .then(res => {
+      if(!res.ok) alert('لم يتم الحذف من السيرفر (Sheet)');
+    })
+    .catch(err => console.error('fault delete error', err));
+
+  trash.faults.splice(idx,1); 
+  saveAll(); 
+  renderTrash(); 
+}
+
+
+/* CRUD orders */
+let editingOrderId = null;
+document.getElementById('addOrderBtn').addEventListener('click', ()=> {
+  if(editingOrderId) return saveEditOrder(); addOrder();});
+document.getElementById('clearOrderBtn').addEventListener('click', clearOrderForm);
+
+function addOrder(){
+  const o = { id: uid(), orderNum: document.getElementById('orderNum').value.trim(), supplyNum: document.getElementById('supplyNum').value.trim(), date: document.getElementById('orderDate').value, person: document.getElementById('orderPerson').value.trim(), details: document.getElementById('orderDetails').value.trim() };
+  fetch(API_URL, {
+  method: 'POST',
+  // headers: {'Content-Type': 'application/json'},
+  body: JSON.stringify({ kind: 'order', op: 'add', data: o })
+}).then(r => r.json())
+  .then(res => {
+    if (!res.ok) alert('مشكلة في حفظ الأمر على السيرفر، هيتحفظ Local بس');
+  }).catch(err => {
+    console.error(err);
+    alert('السيرفر مش متاح حاليًا، هيتحفظ Local بس');
+  });
+  orders.unshift(o); clearOrderForm(); renderOrderTable(); renderTrash();
+}
+function startEditOrder(id){
+  const o = orders.find(x=>x.id===id); if(!o) return alert('غير موجود'); editingOrderId=id; document.getElementById('orderNum').value=o.orderNum; document.getElementById('supplyNum').value=o.supplyNum; document.getElementById('orderDate').value=o.date; document.getElementById('orderPerson').value=o.person; document.getElementById('orderDetails').value=o.details; document.getElementById('addOrderBtn').innerText='حفظ التعديل';
+}
+// function saveEditOrder(){ const idx=orders.findIndex(x=>x.id===editingOrderId); if(idx===-1) return; orders[idx].orderNum=document.getElementById('orderNum').value.trim(); orders[idx].supplyNum=document.getElementById('supplyNum').value.trim(); orders[idx].date=document.getElementById('orderDate').value; orders[idx].person=document.getElementById('orderPerson').value.trim(); orders[idx].details=document.getElementById('orderDetails').value.trim(); editingOrderId=null; clearOrderForm(); renderOrderTable(); }
+function saveEditOrder(){
+  const idx = orders.findIndex(x=>x.id===editingOrderId); 
+  if(idx===-1) return;
+
+  orders[idx].orderNum = document.getElementById('orderNum').value.trim();
+  orders[idx].supplyNum= document.getElementById('supplyNum').value.trim();
+  orders[idx].date     = document.getElementById('orderDate').value;
+  orders[idx].person   = document.getElementById('orderPerson').value.trim();
+  orders[idx].details  = document.getElementById('orderDetails').value.trim();
+
+  const o = orders[idx];
+  fetch(API_URL, {
+    method: 'POST',
+    body: JSON.stringify({ kind: 'order', op: 'update', data: o })
+  }).then(r=>r.json())
+    .then(res => {
+      if(!res.ok) alert('تعديل الأمر لم يُحفظ على السيرفر');
+    })
+    .catch(err => console.error('order update error', err));
+
+  editingOrderId=null; 
+  clearOrderForm(); 
+  renderOrderTable();
+}
+
+function clearOrderForm(){ document.getElementById('orderNum').value=''; document.getElementById('supplyNum').value=''; document.getElementById('orderDate').value=''; document.getElementById('orderPerson').value=''; document.getElementById('orderDetails').value=''; editingOrderId=null; document.getElementById('addOrderBtn').innerText='إضافة أمر'; }
+function moveToTrashOrder(id){ const idx=orders.findIndex(x=>x.id===id); if(idx===-1) return; trash.orders.unshift(orders.splice(idx,1)[0]); saveAll(); renderOrderTable(); renderTrash(); }
+function restoreOrder(id){ const idx=trash.orders.findIndex(x=>x.id===id); if(idx===-1) return; orders.unshift(trash.orders.splice(idx,1)[0]); saveAll(); renderOrderTable(); renderTrash(); }
+function permanentDeleteOrder(id){
+  const idx = trash.orders.findIndex(x=>x.id===id); 
+  if(idx===-1) return;
+  if(!confirm('حذف نهائي؟')) return;
+
+  fetch(API_URL, {
+    method: 'POST',
+    body: JSON.stringify({ kind: 'order', op: 'delete', data: { id } })
+  }).then(r=>r.json())
+    .then(res => {
+      if(!res.ok) alert('لم يتم الحذف من السيرفر (Sheet)');
+    })
+    .catch(err => console.error('order delete error', err));
+
+  trash.orders.splice(idx,1); 
+  saveAll(); 
+  renderTrash();
+}
+
+// function permanentDeleteOrder(id){ const idx=trash.orders.findIndex(x=>x.id===id); if(idx===-1) return; if(!confirm('حذف نهائي؟')) return; trash.orders.splice(idx,1); saveAll(); renderTrash(); }
+document.getElementById('emptyTrashBtn').addEventListener('click', ()=> 
+            { if(!confirm('حذف نهائي لكل المحذوفات؟')) return; 
+            trash={faults:[],orders:[]}; 
+            saveAll(); 
+            renderTrash(); });
+
+            document.getElementById('emptyTrashBtn').addEventListener('click', () => {
+  if (!confirm('حذف نهائي لكل المحذوفات (أعطال وأوامر)؟')) return;
+
+  // جهّز الـ IDs اللي هتتمسح من الشيت
+  const faultIds = trash.faults.map(f => f.id);
+  const orderIds = trash.orders.map(o => o.id);
+
+  const requests = [];
+
+  // ابعت طلب حذف لكل عطل
+  faultIds.forEach(id => {
+    requests.push(
+      fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ kind: 'fault', op: 'delete', data: { id } })
+      })
+    );
+  });
+
+  // ابعت طلب حذف لكل أمر شراء
+  orderIds.forEach(id => {
+    requests.push(
+      fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ kind: 'order', op: 'delete', data: { id } })
+      })
+    );
+  });
+
+  // لما تخلص كل الطلبات (حتى لو في بعضها فشل)
+  Promise.allSettled(requests).then(() => {
+    // فضّي السلة محليًا
+    trash = { faults: [], orders: [] };
+    saveAll();
+    renderTrash();
+    alert('تم الحذف النهائي لكل المحذوفات من السلة، وحاولنا حذفها من DB أيضًا.');
+  }).catch(err => {
+    console.error('empty trash error', err);
+    alert('حدث خطأ أثناء الحذف من Google Sheet، لكن تم تفريغ السلة محليًا.');
+  });
+});
+
+/* filters */
+document.getElementById('applyFiltersBtn').addEventListener('click', applyFilters);
+document.getElementById('clearFiltersBtn').addEventListener('click', ()=>{ document.getElementById('search').value=''; document.getElementById('filterStatus').value=''; applyFilters(); });
+
+function applyFilters(){
+  const q = (document.getElementById('search').value||'').toLowerCase();
+  const st = (document.getElementById('filterStatus').value||'').toLowerCase();
+  document.querySelectorAll('#faultTable tbody tr').forEach(tr=>{
+    const text = tr.innerText.toLowerCase();
+    tr.style.display = ((!q || text.includes(q)) && (!st || text.includes(st))) ? '' : 'none';
+  });
+}
+
+/* order filter */
+document.getElementById('applyOrderFilterBtn').addEventListener('click', applyOrderFilters);
+function applyOrderFilters(){ const q=(document.getElementById('searchOrder').value||'').toLowerCase(); document.querySelectorAll('#orderTable tbody tr').forEach(tr=>tr.style.display = (!q || tr.innerText.toLowerCase().includes(q)) ? '' : 'none'); }
+
+/* exports: CSV and Word (table) and print */
+function arrayToCsv(headers, rows){
+  const esc = v => `"${String(v||'').replace(/"/g,'""')}"`;
+  const lines = [headers.map(esc).join(',')].concat(rows.map(r=>headers.map(h=>esc(r[h])).join(',')));
+  return lines.join('\r\n');
+}
+function downloadBlob(content, filename, type){
+  const blob = new Blob([content], {type});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
+}
+
+/* Faults exports (all) */
+document.getElementById('exportCsvAll').addEventListener('click', ()=> {
+  const headers = ['#','machine','line','person','description','shift','date','lcode','partName','partQty','status'];
+  const rows = faults.map((f,i)=> ({ '#':i+1, machine:f.machine, line:f.line, person:f.person, description:f.description, shift:f.shift, date:f.date, lcode:f.lcode, partName:f.partName, partQty:f.partQty, status:f.status }));
+  const csv = arrayToCsv(headers, rows);
+  downloadBlob(csv, `faults_${new Date().toISOString().slice(0,10)}.csv`, 'text/csv;charset=utf-8;');
+});
+
+/* Word export as table (all faults) */
+document.getElementById('exportDocAll').addEventListener('click', ()=> {
+  const title = 'تقرير الأعطال';
+  const headers = ['#','الماكينة','الخط','القائم','الوصف','الوردية','التاريخ','L Number','اسم القطعة','الكمية','الحالة'];
+  let html = `<html dir="rtl"><head><meta charset="utf-8"><title>${title}</title><style>table{width:100%;border-collapse:collapse}th,td{border:1px solid #666;padding:6px;text-align:right}</style></head><body><h2 style="text-align:center">نظام إدارة الأعطال وأوامر الشراء — الكهرباء</h2><h3 style="text-align:center">${title}</h3><p>تاريخ: ${new Date().toLocaleDateString()}</p><table><thead><tr>${headers.map(h=>'<th>'+h+'</th>').join('')}</tr></thead><tbody>`;
+  faults.forEach((f,i)=>{
+    html += `<tr><td>${i+1}</td><td>${escapeHtml(f.machine)}</td><td>${escapeHtml(f.line)}</td><td>${escapeHtml(f.person)}</td><td>${escapeHtml(f.description)}</td><td>${escapeHtml(f.shift)}</td><td>${escapeHtml(f.date)}</td><td>${escapeHtml(f.lcode)}</td><td>${escapeHtml(f.partName)}</td><td>${escapeHtml(f.partQty)}</td><td>${escapeHtml(f.status)}</td></tr>`;
+  });
+  html += '</tbody></table></body></html>';
+  downloadBlob(html, `faults_${new Date().toISOString().slice(0,10)}.doc`, 'application/msword');
+});
+
+/* Print/PDF (opens printable window with table) */
+document.getElementById('printPdfAll').addEventListener('click', ()=> {
+  const title = 'تقرير الأعطال';
+  let html = `<html dir="rtl"><head><meta charset="utf-8"><title>${title}</title><style>body{font-family:Arial;direction:rtl;padding:16px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #666;padding:6px;text-align:right}</style></head><body>`;
+  html += `<div style="text-align:center"><h2>نظام إدارة الأعطال وأوامر الشراء — الكهرباء</h2><h3>${title}</h3><p>تاريخ: ${new Date().toLocaleDateString()}</p></div>`;
+  html += `<table><thead><tr><th>#</th><th>الماكينة</th><th>الخط</th><th>القائم</th><th>الوصف</th><th>الوردية</th><th>التاريخ</th><th>L Number</th><th>القطعة</th><th>الكمية</th><th>الحالة</th></tr></thead><tbody>`;
+  faults.forEach((f,i)=> {
+    html += `<tr><td>${i+1}</td><td>${escapeHtml(f.machine)}</td><td>${escapeHtml(f.line)}</td><td>${escapeHtml(f.person)}</td><td>${escapeHtml(f.description)}</td><td>${escapeHtml(f.shift)}</td><td>${escapeHtml(f.date)}</td><td>${escapeHtml(f.lcode)}</td><td>${escapeHtml(f.partName)}</td><td>${escapeHtml(f.partQty)}</td><td>${escapeHtml(f.status)}</td></tr>`;
+  });
+  html += '</tbody></table></body></html>';
+  const w = window.open('','_blank'); w.document.write(html); w.document.close(); setTimeout(()=> w.print(),400);
+});
+
+/* Orders exports */
+document.getElementById('exportOrdersCsv').addEventListener('click', ()=> {
+  const headers=['#','orderNum','supplyNum','date','person','details'];
+  const rows = orders.map((o,i)=> ({'#':i+1, orderNum:o.orderNum, supplyNum:o.supplyNum, date:o.date, person:o.person, details:o.details}));
+  const csv = arrayToCsv(headers, rows);
+  downloadBlob(csv, `orders_${new Date().toISOString().slice(0,10)}.csv`, 'text/csv;charset=utf-8;');
+});
+document.getElementById('exportOrdersDoc').addEventListener('click', ()=> {
+  const title='تقرير أوامر الشراء';
+  let html = `<html dir="rtl"><head><meta charset="utf-8"><title>${title}</title><style>table{width:100%;border-collapse:collapse}th,td{border:1px solid #666;padding:6px;text-align:right}</style></head><body><h2 style="text-align:center">نظام إدارة الأعطال وأوامر الشراء — الكهرباء</h2><h3 style="text-align:center">${title}</h3><p>تاريخ: ${new Date().toLocaleDateString()}</p><table><thead><tr><th>#</th><th>أمر الشراء</th><th>توريد</th><th>التاريخ</th><th>القائم</th><th>تفاصيل</th></tr></thead><tbody>`;
+  orders.forEach((o,i)=> html += `<tr><td>${i+1}</td><td>${escapeHtml(o.orderNum)}</td><td>${escapeHtml(o.supplyNum)}</td><td>${escapeHtml(o.date)}</td><td>${escapeHtml(o.person)}</td><td>${escapeHtml(o.details)}</td></tr>`);
+  html += '</tbody></table></body></html>'; downloadBlob(html, `orders_${new Date().toISOString().slice(0,10)}.doc`, 'application/msword');
+});
+document.getElementById('printOrdersBtn').addEventListener('click', ()=> {
+  const title='تقرير أوامر الشراء'; let html = `<html dir="rtl"><head><meta charset="utf-8"><title>${title}</title><style>body{font-family:Arial;direction:rtl;padding:16px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #666;padding:6px;text-align:right}</style></head><body>`;
+  html += `<div style="text-align:center"><h2>نظام إدارة الأعطال وأوامر الشراء — الكهرباء</h2><h3>${title}</h3><p>تاريخ: ${new Date().toLocaleDateString()}</p></div>`;
+  html += `<table><thead><tr><th>#</th><th>أمر الشراء</th><th>توريد</th><th>التاريخ</th><th>القائم</th><th>تفاصيل</th></tr></thead><tbody>`;
+  orders.forEach((o,i)=> html += `<tr><td>${i+1}</td><td>${escapeHtml(o.orderNum)}</td><td>${escapeHtml(o.supplyNum)}</td><td>${escapeHtml(o.date)}</td><td>${escapeHtml(o.person)}</td><td>${escapeHtml(o.details)}</td></tr>`);
+  html += '</tbody></table></body></html>'; const w=window.open('','_blank'); w.document.write(html); w.document.close(); setTimeout(()=>w.print(),300);
+});
+
+/* dashboard */
+function drawDashboard(){
+  const total = faults.length;
+  const done = faults.filter(f=>f.status==='تم الإصلاح').length;
+  const working = faults.filter(f=>f.status==='جاري الإصلاح').length;
+  const testing = faults.filter(f=>f.status==='تحت التجربة').length;
+  const waitC = faults.filter(f=>f.status==='بانتظار رد الشركة').length;
+  const waitP = faults.filter(f=>f.status==='بانتظار قطعة الغيار').length;
+
+  const tiles = document.getElementById('tiles'); tiles.innerHTML='';
+  const addTile = (title,val)=> { const d=document.createElement('div'); d.className='tile'; d.innerHTML=`<h4>${title}</h4><div style="font-weight:700;font-size:20px">${val}</div>`; tiles.appendChild(d); };
+  addTile('إجمالي الأعطال', total); addTile('تم الإصلاح', done); addTile('جاري الإصلاح', working); addTile('تحت التجربة', testing); addTile('بانتظار رد الشركة', waitC); addTile('بانتظار قطعة الغيار', waitP);
+
+  const canvas = document.getElementById('pie'); const ctx = canvas.getContext('2d'); ctx.clearRect(0,0,canvas.width,canvas.height);
+  const data = [done, working, testing, waitC, waitP]; const colors=['#8ed08e','#ffd966','#fff3b0','#ffd59e','#ffb4b4']; const labels=['تم الإصلاح','جاري الإصلاح','تحت التجربة','بانتظار رد الشركة','بانتظار قطعة الغيار'];
+  const cx=canvas.width/2, cy=canvas.height/2, r=Math.min(cx,cy)-20;
+  let start=0; const totalSum = data.reduce((a,b)=>a+b,0);
+  for(let i=0;i<data.length;i++){
+    const slice = totalSum===0?0:(data[i]/totalSum)*(Math.PI*2);
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.fillStyle=colors[i]; ctx.arc(cx,cy,r,start,start+slice); ctx.closePath(); ctx.fill();
+    start += slice;
+  }
+  ctx.font='13px Arial'; let ly=10; for(let i=0;i<labels.length;i++){ ctx.fillStyle=colors[i]; ctx.fillRect(10,ly,12,12); ctx.fillStyle='#000'; ctx.fillText(` ${labels[i]} (${data[i]})`, 28, ly+10); ly+=18; }
+  const tbody = document.querySelector('#dashTable tbody'); tbody.innerHTML=''; labels.forEach((lab,i)=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td>${lab}</td><td>${data[i]}</td>`; tbody.appendChild(tr);});
+}
+
+/* init render */
+renderFaultTable(); renderOrderTable(); renderTrash(); drawDashboard();
+
+function loadFromServer() {
+  // 1) تحميل الأعطال من السيرفر
+  fetch(API_URL + '?kind=faults')
+    .then(r => r.json())
+    .then(data => {
+      if (!Array.isArray(data)) return;
+      faults = data;              // استبدل اللي في المصفوفة باللي جاي من الشيت
+      renderFaultTable();         // اعرض جدول الأعطال
+      renderTrash();              // حدّث سلة المحذوفات لو حابب تعتمدها أونلاين بعدين
+      drawDashboard();            // حدّث الـ Dashboard
+    })
+    .catch(err => {
+      console.error('خطأ في تحميل الأعطال من السيرفر', err);
+    });
+
+  // 2) تحميل أوامر الشراء من السيرفر
+  fetch(API_URL + '?kind=orders')
+    .then(r => r.json())
+    .then(data => {
+      if (!Array.isArray(data)) return;
+      orders = data;              // استبدل أوامر الشراء اللي عندك باللي على الشيت
+      renderOrderTable();         // اعرض جدول الأوامر
+      renderTrash();              // حدّث سلة المحذوفات (اختياري)
+    })
+    .catch(err => {
+      console.error('خطأ في تحميل أوامر الشراء من السيرفر', err);
+    });
+}
+
+// تحميل البيانات من السيرفر بعد ما نعمل رندر مبدئي من localStorage (لو موجودة)
+loadFromServer();
+
+/* implement render functions after declarations to avoid hoisting issues (redefine) */
+function renderFaultTable(){ const tbody = document.querySelector('#faultTable tbody'); tbody.innerHTML=''; faults.forEach((f,i)=>{ const tr=document.createElement('tr'); tr.innerHTML = `<td>${i+1}</td><td>${escapeHtml(f.machine)}</td><td>${escapeHtml(f.line)}</td><td>${escapeHtml(f.person)}</td><td>${escapeHtml(f.description)}</td><td>${escapeHtml(f.shift)}</td><td>${escapeHtml(f.date)}</td><td>${escapeHtml(f.lcode)}</td><td>${escapeHtml(f.partName)}</td><td>${escapeHtml(f.partQty)}</td><td class="status-cell">${escapeHtml(f.status)}</td><td class="no-print actions"><button class="btn ghost" onclick="startEditFault('${f.id}')">تعديل</button><button class="btn" onclick="moveToTrashFault('${f.id}')">حذف</button></td>`; const sc = tr.querySelector('.status-cell'); if(f.status==='تم الإصلاح') sc.classList.add('status-okay'); else if(f.status==='جاري الإصلاح' || f.status==='تحت التجربة') sc.classList.add('status-working'); else if(f.status==='بانتظار رد الشركة') sc.classList.add('status-wait-company'); else if(f.status==='بانتظار قطعة الغيار') sc.classList.add('status-wait-part'); tbody.appendChild(tr); }); saveAll(); }
+
+function renderOrderTable(){ const tbody = document.querySelector('#orderTable tbody'); tbody.innerHTML=''; orders.forEach((o,i)=>{ const tr=document.createElement('tr'); tr.innerHTML = `<td>${escapeHtml(o.orderNum)}</td><td>${escapeHtml(o.supplyNum)}</td><td>${escapeHtml(o.date)}</td><td>${escapeHtml(o.person)}</td><td>${escapeHtml(o.details||'')}</td><td class="no-print actions"><button class="btn ghost" onclick="startEditOrder('${o.id}')">تعديل</button><button class="btn" onclick="moveToTrashOrder('${o.id}')">حذف</button></td>`; tbody.appendChild(tr); }); saveAll(); }
+
+function renderTrash(){ const tf = document.querySelector('#trashFaults tbody'); tf.innerHTML=''; trash.faults.forEach((f,i)=>{ const tr=document.createElement('tr'); tr.innerHTML = `<td>${i+1} - ${escapeHtml(f.machine)} (${escapeHtml(f.date)})</td><td class="no-print actions"><button class="btn" onclick="restoreFault('${f.id}')">استرجاع</button><button class="btn ghost" onclick="permanentDeleteFault('${f.id}')">حذف نهائي</button></td>`; tf.appendChild(tr); }); const to = document.querySelector('#trashOrders tbody'); to.innerHTML=''; trash.orders.forEach((o,i)=>{ const tr=document.createElement('tr'); tr.innerHTML = `<td>${escapeHtml(o.orderNum)} - ${escapeHtml(o.date)}</td><td class="no-print actions"><button class="btn" onclick="restoreOrder('${o.id}')">استرجاع</button><button class="btn ghost" onclick="permanentDeleteOrder('${o.id}')">حذف نهائي</button></td>`; to.appendChild(tr); }); }
+
+/* wire inputs for live filters & actions */
+document.getElementById('search').addEventListener('input', applyFilters);
+document.getElementById('filterStatus').addEventListener('input', applyFilters);
+document.getElementById('searchOrder').addEventListener('input', applyOrderFilters);
+
+/* ensure exports buttons exist even if no data */
+document.getElementById('exportCsvAll').addEventListener('click', ()=>{ if(!faults.length){ alert('لا توجد بيانات للتصدير'); return;} /* handled above */ });
+document.getElementById('exportDocAll').addEventListener('click', ()=>{ if(!faults.length){ alert('لا توجد بيانات للتصدير'); return;} });
+document.getElementById('exportOrdersCsv').addEventListener('click', ()=>{ if(!orders.length){ alert('لا توجد أوامر للتصدير'); return;} });
+document.getElementById('exportOrdersDoc').addEventListener('click', ()=>{ if(!orders.length){ alert('لا توجد أوامر للتصدير'); return;} });
+document.getElementById('printPdfAll').addEventListener('click', ()=>{/* handled above */});
+document.getElementById('printOrdersBtn').addEventListener('click', ()=>{/* handled above */});
+
+/* final save */
+saveAll();
+</script>
+</body>
+</html>
