@@ -994,7 +994,15 @@ function renderAttendanceTable(){ const tbody = document.querySelector('#attenda
 
 /* Attendance filters & exports */
 document.getElementById('applyAttendanceFilterBtn').addEventListener('click', applyAttendanceFilters);
-function applyAttendanceFilters(){ const q=(document.getElementById('searchAttendance').value||'').toLowerCase(); document.querySelectorAll('#attendanceTable tbody tr').forEach(tr=> tr.style.display = (!q || tr.innerText.toLowerCase().includes(q)) ? '' : 'none'); }
+function applyAttendanceFilters(){ 
+  const q=(document.getElementById('searchAttendance').value||'').toLowerCase(); 
+  
+  // Filter table view
+  document.querySelectorAll('#attendanceTable tbody tr').forEach(tr=> tr.style.display = (!q || tr.innerText.toLowerCase().includes(q)) ? '' : 'none');
+  
+  // Filter card view
+  document.querySelectorAll('#attendanceCards .order-card').forEach(card=> card.style.display = (!q || card.innerText.toLowerCase().includes(q)) ? '' : 'none');
+}
 document.getElementById('searchAttendance').addEventListener('input', applyAttendanceFilters);
 
 document.getElementById('exportAttendanceCsv').addEventListener('click', ()=>{
@@ -1061,15 +1069,31 @@ document.getElementById('clearFiltersBtn').addEventListener('click', ()=>{ docum
 function applyFilters(){
   const q = (document.getElementById('search').value||'').toLowerCase();
   const st = (document.getElementById('filterStatus').value||'').toLowerCase();
+  
+  // Filter table view
   document.querySelectorAll('#faultTable tbody tr').forEach(tr=>{
     const text = tr.innerText.toLowerCase();
     tr.style.display = ((!q || text.includes(q)) && (!st || text.includes(st))) ? '' : 'none';
+  });
+  
+  // Filter card view
+  document.querySelectorAll('#faultCards .fault-card').forEach(card=>{
+    const text = card.innerText.toLowerCase();
+    card.style.display = ((!q || text.includes(q)) && (!st || text.includes(st))) ? '' : 'none';
   });
 }
 
 /* order filter */
 document.getElementById('applyOrderFilterBtn').addEventListener('click', applyOrderFilters);
-function applyOrderFilters(){ const q=(document.getElementById('searchOrder').value||'').toLowerCase(); document.querySelectorAll('#orderTable tbody tr').forEach(tr=>tr.style.display = (!q || tr.innerText.toLowerCase().includes(q)) ? '' : 'none'); }
+function applyOrderFilters(){ 
+  const q=(document.getElementById('searchOrder').value||'').toLowerCase(); 
+  
+  // Filter table view
+  document.querySelectorAll('#orderTable tbody tr').forEach(tr=>tr.style.display = (!q || tr.innerText.toLowerCase().includes(q)) ? '' : 'none');
+  
+  // Filter card view
+  document.querySelectorAll('#orderCards .order-card').forEach(card=>card.style.display = (!q || card.innerText.toLowerCase().includes(q)) ? '' : 'none');
+}
 
 /* exports: CSV and Word (table) and print */
 function arrayToCsv(headers, rows){
