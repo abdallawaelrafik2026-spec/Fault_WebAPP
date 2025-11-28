@@ -16,13 +16,15 @@
   .box{background:#fff;padding:12px;border-radius:8px;box-shadow:0 1px 6px rgba(0,0,0,0.05);margin-bottom:12px}
   label{display:block;margin-top:8px;font-size:14px}
   input,select,textarea{width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;box-sizing:border-box}
+  input[type="date"]{font-size:14px;color:#333;min-height:40px;padding:10px}
+  input[type="date"]::-webkit-calendar-picker-indicator{cursor:pointer}
   textarea{min-height:70px}
   .btn{background:var(--primary);color:#fff;border:0;padding:8px 10px;border-radius:6px;cursor:pointer}
   .btn.ghost{background:#eee;color:#111}
   .row{display:flex;gap:8px;align-items:center}
   .row .flex{flex:1}
   table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
-  th,td{border:1px solid #ddd;padding:8px;text-align:right;vertical-align:top}
+  th,td{border:1px solid #ddd;padding:10px;text-align:right;vertical-align:top;min-height:40px}
   th{background:#0A4C88;color:#fff}
   .actions button{margin-left:6px}
   .status-okay{background:#c4f7c4}
@@ -146,6 +148,14 @@
         <button class="btn ghost" id="applyFiltersBtn">تطبيق</button>
         <button class="btn ghost" id="clearFiltersBtn">إعادة</button>
       </div>
+      <div class="row" style="margin-bottom:8px">
+        <label style="margin:0;flex:0 0 auto;padding-right:8px">من التاريخ:</label>
+        <input type="date" id="dateFromFault" style="flex:0 0 150px" />
+        <label style="margin:0;flex:0 0 auto;padding-right:8px;padding-left:8px">إلى التاريخ:</label>
+        <input type="date" id="dateToFault" style="flex:0 0 150px" />
+        <button class="btn ghost" id="applyDateFilterFaultBtn">بحث بالتاريخ</button>
+        <div class="flex"></div>
+      </div>
 
       <div class="table-view">
       <div class="table-responsive">
@@ -191,6 +201,14 @@
         <input id="searchOrder" placeholder="بحث برقم الأمر أو القائم…" style="flex:1" />
         <button class="btn ghost" id="applyOrderFilterBtn">تطبيق</button>
       </div>
+      <div class="row" style="margin-bottom:8px">
+        <label style="margin:0;flex:0 0 auto;padding-right:8px">من التاريخ:</label>
+        <input type="date" id="dateFromOrder" style="flex:0 0 150px" />
+        <label style="margin:0;flex:0 0 auto;padding-right:8px;padding-left:8px">إلى التاريخ:</label>
+        <input type="date" id="dateToOrder" style="flex:0 0 150px" />
+        <button class="btn ghost" id="applyDateFilterOrderBtn">بحث بالتاريخ</button>
+        <div class="flex"></div>
+      </div>
       <div class="table-view">
       <div class="table-responsive">
       <table id="orderTable">
@@ -231,6 +249,14 @@
       <div class="row" style="margin-bottom:8px">
         <input id="searchAttendance" placeholder="بحث باسم العامل أو الرقم…" style="flex:1" />
         <button class="btn ghost" id="applyAttendanceFilterBtn">تطبيق</button>
+      </div>
+      <div class="row" style="margin-bottom:8px">
+        <label style="margin:0;flex:0 0 auto;padding-right:8px">من التاريخ:</label>
+        <input type="date" id="dateFromAttendance" style="flex:0 0 150px" />
+        <label style="margin:0;flex:0 0 auto;padding-right:8px;padding-left:8px">إلى التاريخ:</label>
+        <input type="date" id="dateToAttendance" style="flex:0 0 150px" />
+        <button class="btn ghost" id="applyDateFilterAttendanceBtn">بحث بالتاريخ</button>
+        <div class="flex"></div>
       </div>
       <div class="table-view">
       <div class="table-responsive">
@@ -299,6 +325,15 @@ let orders = JSON.parse(localStorage.getItem(K_ORDERS)||'[]');
 let trash = JSON.parse(localStorage.getItem(K_TRASH)||'{"faults":[],"orders":[],"attendance":[]}');
 let attendance = JSON.parse(localStorage.getItem(K_ATT)||'[]');
 
+// تنضيف البيانات الموجودة من الوقت الزائد
+faults.forEach(f => { if(f.date) f.date = formatDateOnly(f.date); });
+orders.forEach(o => { if(o.date) o.date = formatDateOnly(o.date); });
+trash.faults.forEach(f => { if(f.date) f.date = formatDateOnly(f.date); });
+trash.orders.forEach(o => { if(o.date) o.date = formatDateOnly(o.date); });
+attendance.forEach(a => { if(a.absenceDate) a.absenceDate = formatDateOnly(a.absenceDate); });
+trash.attendance?.forEach(a => { if(a.absenceDate) a.absenceDate = formatDateOnly(a.absenceDate); });
+saveAll();
+
 /* Trash sync interval - declare early to avoid ReferenceError */
 let trashSyncInterval = null;
 
@@ -328,6 +363,20 @@ show('faults');
 
 /* helpers */
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function getTodayDate(){ 
+  const d = new Date(); 
+  const year = d.getFullYear(); 
+  const month = String(d.getMonth()+1).padStart(2,'0'); 
+  const day = String(d.getDate()).padStart(2,'0'); 
+  return `${year}-${month}-${day}`; 
+}
+function formatDateOnly(dateStr) {
+  if (!dateStr) return '';
+  // إذا كانت الصيغة YYYY-MM-DD فقط، أرجعها كما هي
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+  // إذا كانت تحتوي على وقت، شيل الوقت
+  return dateStr.split('T')[0].split(' ')[0];
+}
 function saveAll(){ localStorage.setItem(K_FAULTS, JSON.stringify(faults)); localStorage.setItem(K_ORDERS, JSON.stringify(orders)); localStorage.setItem(K_TRASH, JSON.stringify(trash)); localStorage.setItem(K_ATT, JSON.stringify(attendance)); }
 function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
@@ -444,7 +493,17 @@ document.getElementById('addBtn').addEventListener('click', onAddOrSave);
 document.getElementById('clearBtn').addEventListener('click', clearFaultForm);
 function clearFaultForm(){
   editingFaultId = null;
-  document.getElementById('machine').value=''; document.getElementById('line').value=''; document.getElementById('person').value=''; document.getElementById('description').value=''; document.getElementById('shift').value='صباحية'; document.getElementById('date').value=''; document.getElementById('lcode').value=''; document.getElementById('partName').value=''; document.getElementById('partQty').value=0; document.getElementById('status').value='تم الإصلاح'; document.getElementById('addBtn').innerText='إضافة العطل';
+  document.getElementById('machine').value=''; 
+  document.getElementById('line').value=''; 
+  document.getElementById('person').value=''; 
+  document.getElementById('description').value=''; 
+  document.getElementById('shift').value='صباحية'; 
+  document.getElementById('date').value=getTodayDate(); 
+  document.getElementById('lcode').value=''; 
+  document.getElementById('partName').value=''; 
+  document.getElementById('partQty').value=0; 
+  document.getElementById('status').value='تم الإصلاح'; 
+  document.getElementById('addBtn').innerText='إضافة العطل';
 }
 
 function onAddOrSave(){
@@ -456,7 +515,7 @@ function onAddOrSave(){
     person: document.getElementById('person').value.trim(),
     description: document.getElementById('description').value.trim(),
     shift: document.getElementById('shift').value,
-    date: document.getElementById('date').value,
+    date: formatDateOnly(document.getElementById('date').value),
     lcode: document.getElementById('lcode').value.trim(),
     partName: document.getElementById('partName').value.trim(),
     partQty: Number(document.getElementById('partQty').value||0),
@@ -505,7 +564,7 @@ function saveEditFault(){
   faults[idx].person = document.getElementById('person').value.trim();
   faults[idx].description = document.getElementById('description').value.trim();
   faults[idx].shift = document.getElementById('shift').value;
-  faults[idx].date = document.getElementById('date').value;
+  faults[idx].date = formatDateOnly(document.getElementById('date').value);
   faults[idx].lcode = document.getElementById('lcode').value.trim();
   faults[idx].partName = document.getElementById('partName').value.trim();
   faults[idx].partQty = Number(document.getElementById('partQty').value||0);
@@ -619,7 +678,14 @@ document.getElementById('addOrderBtn').addEventListener('click', ()=> {
 document.getElementById('clearOrderBtn').addEventListener('click', clearOrderForm);
 
 function addOrder(){
-  const o = { id: uid(), orderNum: document.getElementById('orderNum').value.trim(), supplyNum: document.getElementById('supplyNum').value.trim(), date: document.getElementById('orderDate').value, person: document.getElementById('orderPerson').value.trim(), details: document.getElementById('orderDetails').value.trim() };
+  const o = { 
+    id: uid(), 
+    orderNum: document.getElementById('orderNum').value.trim(), 
+    supplyNum: document.getElementById('supplyNum').value.trim(), 
+    date: formatDateOnly(document.getElementById('orderDate').value), 
+    person: document.getElementById('orderPerson').value.trim(), 
+    details: document.getElementById('orderDetails').value.trim() 
+  };
   fetch(API_URL, {
   method: 'POST',
   // headers: {'Content-Type': 'application/json'},
@@ -643,7 +709,7 @@ function saveEditOrder(){
 
   orders[idx].orderNum = document.getElementById('orderNum').value.trim();
   orders[idx].supplyNum= document.getElementById('supplyNum').value.trim();
-  orders[idx].date     = document.getElementById('orderDate').value;
+  orders[idx].date     = formatDateOnly(document.getElementById('orderDate').value);
   orders[idx].person   = document.getElementById('orderPerson').value.trim();
   orders[idx].details  = document.getElementById('orderDetails').value.trim();
 
@@ -662,7 +728,15 @@ function saveEditOrder(){
   renderOrderTable();
 }
 
-function clearOrderForm(){ document.getElementById('orderNum').value=''; document.getElementById('supplyNum').value=''; document.getElementById('orderDate').value=''; document.getElementById('orderPerson').value=''; document.getElementById('orderDetails').value=''; editingOrderId=null; document.getElementById('addOrderBtn').innerText='إضافة أمر'; }
+function clearOrderForm(){ 
+  document.getElementById('orderNum').value=''; 
+  document.getElementById('supplyNum').value=''; 
+  document.getElementById('orderDate').value=getTodayDate(); 
+  document.getElementById('orderPerson').value=''; 
+  document.getElementById('orderDetails').value=''; 
+  editingOrderId=null; 
+  document.getElementById('addOrderBtn').innerText='إضافة أمر'; 
+}
 
 function moveToTrashOrder(id){
   const o = orders.find(x=>x.id===id);
@@ -817,11 +891,15 @@ document.getElementById('clearAttendanceBtn').addEventListener('click', clearAtt
 
 function clearAttendanceForm(){
   editingAttendanceId = null;
-  document.getElementById('workerName').value=''; document.getElementById('workerNum').value=''; document.getElementById('absenceDate').value=''; document.getElementById('daysCount').value=1; document.getElementById('addAttendanceBtn').innerText='إضافة سجل';
+  document.getElementById('workerName').value=''; 
+  document.getElementById('workerNum').value=''; 
+  document.getElementById('absenceDate').value=getTodayDate(); 
+  document.getElementById('daysCount').value=1; 
+  document.getElementById('addAttendanceBtn').innerText='إضافة سجل';
 }
 
 function addAttendance(){
-  const startDate = document.getElementById('absenceDate').value;
+  const startDate = formatDateOnly(document.getElementById('absenceDate').value);
   const daysCount = Number(document.getElementById('daysCount').value||1);
   
   if (!startDate) {
@@ -872,7 +950,7 @@ function saveEditAttendance(){
   const idx = attendance.findIndex(x=>x.id===editingAttendanceId); 
   if(idx===-1) return alert('خطأ التعديل');
   
-  const startDate = document.getElementById('absenceDate').value;
+  const startDate = formatDateOnly(document.getElementById('absenceDate').value);
   const daysCount = Number(document.getElementById('daysCount').value||1);
   
   // احسب الأيام تلقائياً
@@ -995,14 +1073,33 @@ function renderAttendanceTable(){ const tbody = document.querySelector('#attenda
 /* Attendance filters & exports */
 document.getElementById('applyAttendanceFilterBtn').addEventListener('click', applyAttendanceFilters);
 function applyAttendanceFilters(){ 
-  const q=(document.getElementById('searchAttendance').value||'').toLowerCase(); 
+  const q=(document.getElementById('searchAttendance').value||'').toLowerCase();
+  const dateFrom = document.getElementById('dateFromAttendance').value;
+  const dateTo = document.getElementById('dateToAttendance').value;
   
   // Filter table view
-  document.querySelectorAll('#attendanceTable tbody tr').forEach(tr=> tr.style.display = (!q || tr.innerText.toLowerCase().includes(q)) ? '' : 'none');
+  document.querySelectorAll('#attendanceTable tbody tr').forEach(tr=> {
+    const text = tr.innerText.toLowerCase();
+    const cells = tr.querySelectorAll('td');
+    const rowDate = cells[3]?.textContent || ''; // التاريخ في العمود 3
+    
+    const dateMatch = (!dateFrom || !dateTo || (rowDate >= dateFrom && rowDate <= dateTo));
+    tr.style.display = (!q || text.includes(q)) && dateMatch ? '' : 'none';
+  });
   
   // Filter card view
-  document.querySelectorAll('#attendanceCards .order-card').forEach(card=> card.style.display = (!q || card.innerText.toLowerCase().includes(q)) ? '' : 'none');
+  document.querySelectorAll('#attendanceCards .order-card').forEach(card=> {
+    const text = card.innerText.toLowerCase();
+    const dateText = Array.from(card.querySelectorAll('.order-card-row')).find(row => row.textContent.includes('تاريخ التغيب'))?.textContent || '';
+    const rowDate = dateText.replace('تاريخ التغيب', '').trim();
+    
+    const dateMatch = (!dateFrom || !dateTo || (rowDate >= dateFrom && rowDate <= dateTo));
+    card.style.display = (!q || text.includes(q)) && dateMatch ? '' : 'none';
+  });
 }
+
+// دالة منفصلة لفلتر التاريخ فقط
+document.getElementById('applyDateFilterAttendanceBtn')?.addEventListener('click', applyAttendanceFilters);
 document.getElementById('searchAttendance').addEventListener('input', applyAttendanceFilters);
 
 document.getElementById('exportAttendanceCsv').addEventListener('click', ()=>{
@@ -1064,36 +1161,74 @@ document.getElementById('printAttendanceBtn').addEventListener('click', ()=>{
 
 /* filters */
 document.getElementById('applyFiltersBtn').addEventListener('click', applyFilters);
-document.getElementById('clearFiltersBtn').addEventListener('click', ()=>{ document.getElementById('search').value=''; document.getElementById('filterStatus').value=''; applyFilters(); });
+document.getElementById('clearFiltersBtn').addEventListener('click', ()=>{ 
+  document.getElementById('search').value=''; 
+  document.getElementById('filterStatus').value=''; 
+  document.getElementById('dateFromFault').value=''; 
+  document.getElementById('dateToFault').value=''; 
+  applyFilters(); 
+});
 
 function applyFilters(){
   const q = (document.getElementById('search').value||'').toLowerCase();
   const st = (document.getElementById('filterStatus').value||'').toLowerCase();
+  const dateFrom = document.getElementById('dateFromFault').value;
+  const dateTo = document.getElementById('dateToFault').value;
   
   // Filter table view
   document.querySelectorAll('#faultTable tbody tr').forEach(tr=>{
     const text = tr.innerText.toLowerCase();
-    tr.style.display = ((!q || text.includes(q)) && (!st || text.includes(st))) ? '' : 'none';
+    const cells = tr.querySelectorAll('td');
+    const rowDate = cells[6]?.textContent || ''; // التاريخ في العمود 6
+    
+    const dateMatch = (!dateFrom || !dateTo || (rowDate >= dateFrom && rowDate <= dateTo));
+    tr.style.display = ((!q || text.includes(q)) && (!st || text.includes(st)) && dateMatch) ? '' : 'none';
   });
   
   // Filter card view
   document.querySelectorAll('#faultCards .fault-card').forEach(card=>{
     const text = card.innerText.toLowerCase();
-    card.style.display = ((!q || text.includes(q)) && (!st || text.includes(st))) ? '' : 'none';
+    const dateText = Array.from(card.querySelectorAll('.fault-card-row')).find(row => row.textContent.includes('التاريخ'))?.textContent || '';
+    const rowDate = dateText.replace('التاريخ', '').trim();
+    
+    const dateMatch = (!dateFrom || !dateTo || (rowDate >= dateFrom && rowDate <= dateTo));
+    card.style.display = ((!q || text.includes(q)) && (!st || text.includes(st)) && dateMatch) ? '' : 'none';
   });
 }
+
+// دالة منفصلة لفلتر التاريخ فقط
+document.getElementById('applyDateFilterFaultBtn')?.addEventListener('click', applyFilters);
 
 /* order filter */
 document.getElementById('applyOrderFilterBtn').addEventListener('click', applyOrderFilters);
 function applyOrderFilters(){ 
-  const q=(document.getElementById('searchOrder').value||'').toLowerCase(); 
+  const q=(document.getElementById('searchOrder').value||'').toLowerCase();
+  const dateFrom = document.getElementById('dateFromOrder').value;
+  const dateTo = document.getElementById('dateToOrder').value;
   
   // Filter table view
-  document.querySelectorAll('#orderTable tbody tr').forEach(tr=>tr.style.display = (!q || tr.innerText.toLowerCase().includes(q)) ? '' : 'none');
+  document.querySelectorAll('#orderTable tbody tr').forEach(tr=>{
+    const text = tr.innerText.toLowerCase();
+    const cells = tr.querySelectorAll('td');
+    const rowDate = cells[2]?.textContent || ''; // التاريخ في العمود 2
+    
+    const dateMatch = (!dateFrom || !dateTo || (rowDate >= dateFrom && rowDate <= dateTo));
+    tr.style.display = (!q || text.toLowerCase().includes(q)) && dateMatch ? '' : 'none';
+  });
   
   // Filter card view
-  document.querySelectorAll('#orderCards .order-card').forEach(card=>card.style.display = (!q || card.innerText.toLowerCase().includes(q)) ? '' : 'none');
+  document.querySelectorAll('#orderCards .order-card').forEach(card=>{
+    const text = card.innerText.toLowerCase();
+    const dateText = Array.from(card.querySelectorAll('.order-card-row')).find(row => row.textContent.includes('التاريخ'))?.textContent || '';
+    const rowDate = dateText.replace('التاريخ', '').trim();
+    
+    const dateMatch = (!dateFrom || !dateTo || (rowDate >= dateFrom && rowDate <= dateTo));
+    card.style.display = (!q || text.includes(q)) && dateMatch ? '' : 'none';
+  });
 }
+
+// دالة منفصلة لفلتر التاريخ فقط
+document.getElementById('applyDateFilterOrderBtn')?.addEventListener('click', applyOrderFilters);
 
 /* exports: CSV and Word (table) and print */
 function arrayToCsv(headers, rows){
@@ -1255,6 +1390,8 @@ function loadFromServer() {
     .then(r => r.json())
     .then(data => {
       if (!Array.isArray(data)) return;
+      // نضّف التواريخ
+      data.forEach(f => { if(f.date) f.date = formatDateOnly(f.date); });
       // فصل الأعطال النشطة عن المحذوفة بناءً على عمود "Delete?"
       faults = data.filter(f => !f.deleted && f.deleted !== 'Yes' && f.deleted !== 'TRUE' && f.deleted !== true);
       const deletedFaults = data.filter(f => f.deleted === 'Yes' || f.deleted === 'TRUE' || f.deleted === true);
@@ -1274,6 +1411,8 @@ function loadFromServer() {
     .then(r => r.json())
     .then(data => {
       if (!Array.isArray(data)) return;
+      // نضّف التواريخ
+      data.forEach(o => { if(o.date) o.date = formatDateOnly(o.date); });
       // فصل الأوامر النشطة عن المحذوفة بناءً على عمود "Delete?"
       orders = data.filter(o => !o.deleted && o.deleted !== 'Yes' && o.deleted !== 'TRUE' && o.deleted !== true);
       const deletedOrders = data.filter(o => o.deleted === 'Yes' || o.deleted === 'TRUE' || o.deleted === true);
@@ -1292,6 +1431,8 @@ function loadFromServer() {
     .then(r => r.json())
     .then(data => {
       if (!Array.isArray(data)) return;
+      // نضّف التواريخ
+      data.forEach(a => { if(a.absenceDate) a.absenceDate = formatDateOnly(a.absenceDate); });
       // فصل السجلات النشطة عن المحذوفة بناءً على حقل "deleted"
       attendance = data.filter(a => !a.deleted && a.deleted !== 'Yes' && a.deleted !== 'TRUE' && a.deleted !== true);
       const deletedAttendance = data.filter(a => a.deleted === 'Yes' || a.deleted === 'TRUE' || a.deleted === true);
