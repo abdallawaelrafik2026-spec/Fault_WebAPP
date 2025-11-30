@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>نظام إدارة الأعطال وأوامر الشراء والأجازات — الكهرباء</title>
+<title>نظام إدارة الأعطال والصيانة وأوامر الشراء والأجازات — الكهرباء</title>
 <style>
   :root{--primary:#0A4C88;--accent:#08365F;--muted:#666}
   body{font-family:Arial, Tahoma, sans-serif;margin:0;background:#f4f6f8;color:#111}
@@ -100,12 +100,13 @@
 </head>
 <body>
 <header>
-  <h1>نظام إدارة الأعطال وأوامر الشراء والأجازات — الكهرباء</h1>
+  <h1>نظام إدارة الأعطال والصيانة وأوامر الشراء والأجازات — الكهرباء</h1>
   <div style="font-size:13px;color:#fff">وضع أونلاين</div>
 </header>
 
 <nav>
   <button id="navFaults">الأعطال</button>
+  <button id="navMaintenance">الصيانة</button>
   <button id="navOrders">أوامر الشراء</button>
   <button id="navAttendance">الأجازات</button>
   <button id="navTrash">سلة المحذوفات</button>
@@ -178,6 +179,70 @@
       <!-- print / PDF button placed below table as requested (B) -->
       <div style="margin-top:10px; text-align:left;">
         <button class="btn" id="printPdfAll">طباعة / حفظ كـ PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAINTENANCE -->
+  <div id="page_maintenance" class="page" style="display:none">
+    <div class="box">
+      <h3>تسجيل / تعديل صيانة</h3>
+      <div id="maintenanceForm">
+        <label>اسم الماكينة</label><input id="mainMachine" />
+        <label>رقم الخط</label><input id="mainLine" />
+        <label>اسم القائم بالصيانة</label><input id="mainPerson" />
+        <label>التاريخ</label><input type="date" id="mainDate" />
+        <label>كود المخزن (L Number)</label><input id="mainLcode" />
+        <label>اسم قطعة الغيار</label><input id="mainPartName" placeholder="نص حر" />
+        <label>كمية قطعة الغيار</label><input type="number" id="mainPartQty" min="0" value="0" />
+        <label>نوع الصيانة</label>
+        <select id="mainType">
+          <option>أسبوعية</option>
+          <option>شهرية</option>
+          <option>سنوية</option>
+          <option>طارئة</option>
+        </select>
+        <label>ملاحظات</label><textarea id="mainNotes" placeholder="ملاحظات أو وصف الصيانة"></textarea>
+        <div class="row" style="margin-top:10px">
+          <button class="btn" id="addMaintenanceBtn">إضافة صيانة</button>
+          <button class="btn ghost" id="clearMaintenanceBtn">مسح الحقول</button>
+          <div class="flex"></div>
+          <button class="btn" id="exportMaintenanceCsv">تصدير CSV</button>
+          <button class="btn" id="exportMaintenanceDoc">تصدير Word</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="box">
+      <div class="row" style="margin-bottom:8px">
+        <input id="searchMaintenance" placeholder="بحث باسم الماكينة أو القائم…" style="flex:1" />
+        <button class="btn ghost" id="applyMaintenanceFilterBtn">تطبيق</button>
+      </div>
+      <div class="row" style="margin-bottom:8px;flex-wrap:wrap">
+        <label style="margin:0;flex:0 0 auto;padding-right:8px;min-width:80px">من التاريخ:</label>
+        <input type="date" id="dateFromMaintenance" style="flex:1;min-width:120px;margin:0 4px" />
+        <label style="margin:0;flex:0 0 auto;padding-right:8px;padding-left:8px;min-width:80px">إلى التاريخ:</label>
+        <input type="date" id="dateToMaintenance" style="flex:1;min-width:120px;margin:0 4px" />
+        <button class="btn ghost" id="applyDateFilterMaintenanceBtn" style="flex:0 0 auto;margin:0 4px">بحث بالتاريخ</button>
+        <div class="flex"></div>
+      </div>
+
+      <div class="table-view">
+      <div class="table-responsive">
+      <table id="maintenanceTable">
+        <thead>
+          <tr>
+            <th>#</th><th>الماكينة</th><th>الخط</th><th>القائم</th><th>التاريخ</th><th>L Number</th><th>القطعة</th><th>الكمية</th><th>النوع</th><th>الملاحظات</th><th class="no-print">أوامر</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      </div>
+      </div>
+      <div id="maintenanceCards" class="card-view"></div>
+
+      <div style="margin-top:10px; text-align:left;">
+        <button class="btn" id="printMaintenanceBtn">طباعة / حفظ كـ PDF</button>
       </div>
     </div>
   </div>
@@ -301,6 +366,10 @@
       <div class="table-responsive">
       <table id="trashAttendance"><thead><tr><th>#</th><th>اسم العامل / رقم</th><th>تاريخ التغيب</th><th class="no-print">أوامر</th></tr></thead><tbody></tbody></table>
       </div>
+      <h4 style="margin-top:12px">سجلات الصيانة المحذوفة</h4>
+      <div class="table-responsive">
+      <table id="trashMaintenance"><thead><tr><th>#</th><th>بيان</th><th class="no-print">أوامر</th></tr></thead><tbody></tbody></table>
+      </div>
     </div>
   </div>
 
@@ -319,21 +388,27 @@
 </section>
 
 <script>
-const API_URL = 'https://script.google.com/macros/s/AKfycbzp_3jEVPPKlHxzIC5WVqX01yWi9c4RvVjL4Mp-RNzlTqJpqH84Uf49y4ux-dzON1Y-/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwJX_IWSiN4buAVJPxoZ08d74ZJeJRt-Flp4icXoXsA6N3JXrtFTAoL3WKkuPumS7c_/exec';
 /* storage keys */
-const K_FAULTS='faults_v2_final', K_ORDERS='orders_v2_final', K_TRASH='trash_v2_final', K_ATT='attendance_v1';
+const K_FAULTS='faults_v2_final', K_ORDERS='orders_v2_final', K_TRASH='trash_v2_final', K_ATT='attendance_v1', K_MAINTENANCE='maintenance_v1';
 
 /* load */
 let faults = JSON.parse(localStorage.getItem(K_FAULTS)||'[]');
 let orders = JSON.parse(localStorage.getItem(K_ORDERS)||'[]');
-let trash = JSON.parse(localStorage.getItem(K_TRASH)||'{"faults":[],"orders":[],"attendance":[]}');
+let maintenance = JSON.parse(localStorage.getItem(K_MAINTENANCE)||'[]');
+let trash = JSON.parse(localStorage.getItem(K_TRASH)||'{"faults":[],"orders":[],"attendance":[],"maintenance":[]}');
 let attendance = JSON.parse(localStorage.getItem(K_ATT)||'[]');
+
+// تأكد من أن trash.maintenance موجودة
+if(!trash.maintenance) trash.maintenance = [];
 
 // تنضيف البيانات الموجودة من الوقت الزائد
 faults.forEach(f => { if(f.date) f.date = formatDateOnly(f.date); });
 orders.forEach(o => { if(o.date) o.date = formatDateOnly(o.date); });
+maintenance.forEach(m => { if(m.date) m.date = formatDateOnly(m.date); });
 trash.faults.forEach(f => { if(f.date) f.date = formatDateOnly(f.date); });
 trash.orders.forEach(o => { if(o.date) o.date = formatDateOnly(o.date); });
+trash.maintenance?.forEach(m => { if(m.date) m.date = formatDateOnly(m.date); });
 attendance.forEach(a => { if(a.absenceDate) a.absenceDate = formatDateOnly(a.absenceDate); });
 trash.attendance?.forEach(a => { if(a.absenceDate) a.absenceDate = formatDateOnly(a.absenceDate); });
 saveAll();
@@ -343,12 +418,14 @@ let trashSyncInterval = null;
 
 /* ui refs */
 const navFaults = document.getElementById('navFaults');
+const navMaintenance = document.getElementById('navMaintenance');
 const navOrders = document.getElementById('navOrders');
 const navAttendance = document.getElementById('navAttendance');
 const navTrash = document.getElementById('navTrash');
 const navDash = document.getElementById('navDash');
 
 navFaults.onclick = ()=>show('faults');
+navMaintenance.onclick = ()=>show('maintenance');
 navOrders.onclick = ()=>show('orders');
 navAttendance.onclick = ()=>show('attendance');
 navTrash.onclick = ()=>show('trash');
@@ -358,6 +435,7 @@ function show(page){
   document.querySelectorAll('.page').forEach(p=>p.style.display='none');
   document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
   if(page==='faults'){ document.getElementById('page_faults').style.display='block'; navFaults.classList.add('active'); stopTrashSync(); }
+  if(page==='maintenance'){ document.getElementById('page_maintenance').style.display='block'; navMaintenance.classList.add('active'); stopTrashSync(); }
   if(page==='orders'){ document.getElementById('page_orders').style.display='block'; navOrders.classList.add('active'); stopTrashSync(); }
   if(page==='attendance'){ document.getElementById('page_attendance').style.display='block'; navAttendance.classList.add('active'); stopTrashSync(); }
   if(page==='trash'){ document.getElementById('page_trash').style.display='block'; navTrash.classList.add('active'); startTrashSync(); }
@@ -381,7 +459,13 @@ function formatDateOnly(dateStr) {
   // إذا كانت تحتوي على وقت، شيل الوقت
   return dateStr.split('T')[0].split(' ')[0];
 }
-function saveAll(){ localStorage.setItem(K_FAULTS, JSON.stringify(faults)); localStorage.setItem(K_ORDERS, JSON.stringify(orders)); localStorage.setItem(K_TRASH, JSON.stringify(trash)); localStorage.setItem(K_ATT, JSON.stringify(attendance)); }
+function saveAll(){ 
+  localStorage.setItem(K_FAULTS, JSON.stringify(faults)); 
+  localStorage.setItem(K_ORDERS, JSON.stringify(orders)); 
+  localStorage.setItem(K_MAINTENANCE, JSON.stringify(maintenance)); 
+  localStorage.setItem(K_TRASH, JSON.stringify(trash)); 
+  localStorage.setItem(K_ATT, JSON.stringify(attendance)); 
+}
 function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 // دالة لعرض القيمة أو Dash إذا كانت فارغة
@@ -392,6 +476,17 @@ function displayValue(value) {
   }
   return escapeHtml(val);
 }
+
+// تأكد من أن جميع السجلات لديها IDs
+maintenance.forEach(m => { if(!m.id) m.id = uid(); });
+faults.forEach(f => { if(!f.id) f.id = uid(); });
+orders.forEach(o => { if(!o.id) o.id = uid(); });
+attendance.forEach(a => { if(!a.id) a.id = uid(); });
+trash.faults.forEach(f => { if(!f.id) f.id = uid(); });
+trash.orders.forEach(o => { if(!o.id) o.id = uid(); });
+trash.maintenance.forEach(m => { if(!m.id) m.id = uid(); });
+(trash.attendance||[]).forEach(a => { if(!a.id) a.id = uid(); });
+saveAll();
 
 function startTrashSync(){
   // if(trashSyncInterval) return; // Already syncing
@@ -414,24 +509,67 @@ function stopTrashSync(){
 }
 
 function loadTrashFromServer(){
-  // Load deleted faults and orders from server
-  fetch(API_URL + '?kind=trash_faults')
-    .then(r => r.json())
-    .then(data => {
-      if (!Array.isArray(data)) return;
-      trash.faults = data;
-      renderTrash();
-    })
-    .catch(err => console.error('خطأ في تحميل الأعطال المحذوفة', err));
+  // Load all trash data in parallel and wait for all to complete
+  const promises = [];
+  
+  // تحميل الأعطال المحذوفة
+  promises.push(
+    fetch(API_URL + '?kind=trash_faults')
+      .then(r => r.json())
+      .then(data => {
+        if (!Array.isArray(data)) return;
+        trash.faults = data;
+        console.log('✅ تحمّلت الأعطال المحذوفة:', data.length);
+      })
+      .catch(err => console.error('❌ خطأ في تحميل الأعطال المحذوفة', err))
+  );
 
-  fetch(API_URL + '?kind=trash_orders')
-    .then(r => r.json())
-    .then(data => {
-      if (!Array.isArray(data)) return;
-      trash.orders = data;
-      renderTrash();
-    })
-    .catch(err => console.error('خطأ في تحميل الأوامر المحذوفة', err));
+  // تحميل الأوامر المحذوفة
+  promises.push(
+    fetch(API_URL + '?kind=trash_orders')
+      .then(r => r.json())
+      .then(data => {
+        if (!Array.isArray(data)) return;
+        trash.orders = data;
+        console.log('✅ تحمّلت الأوامر المحذوفة:', data.length);
+      })
+      .catch(err => console.error('❌ خطأ في تحميل الأوامر المحذوفة', err))
+  );
+
+  // تحميل الصيانات المحذوفة
+  promises.push(
+    fetch(API_URL + '?kind=trash_maintenance')
+      .then(r => r.json())
+      .then(data => {
+        if (!Array.isArray(data)) return;
+        trash.maintenance = data;
+        console.log('✅ تحمّلت الصيانات المحذوفة:', data.length);
+      })
+      .catch(err => console.error('❌ خطأ في تحميل الصيانات المحذوفة', err))
+  );
+
+  // تحميل سجلات الحضور المحذوفة
+  promises.push(
+    fetch(API_URL + '?kind=trash_attendance')
+      .then(r => r.json())
+      .then(data => {
+        if (!Array.isArray(data)) return;
+        trash.attendance = data;
+        console.log('✅ تحمّلت سجلات الحضور المحذوفة:', data.length);
+      })
+      .catch(err => console.error('❌ خطأ في تحميل سجلات الحضور المحذوفة', err))
+  );
+
+  // انتظر كل الـ fetches وبعدين رندر مرة واحدة - وارجع Promise
+  return Promise.all(promises).then(() => {
+    console.log('🎉 انتهت كل عمليات التحميل - الآن الرندر');
+    saveAll();
+    renderTrash();
+  }).catch(err => {
+    console.error('خطأ عام في loadTrashFromServer:', err);
+    renderTrash(); // رندر حتى لو في أخطاء
+    throw err; // مرر الخطأ للأعلى
+  });
 }
 
 /* render functions */
@@ -823,16 +961,286 @@ function permanentDeleteOrder(id){
 // function permanentDeleteOrder(id){ const idx=trash.orders.findIndex(x=>x.id===id); if(idx===-1) return; if(!confirm('حذف نهائي؟')) return; trash.orders.splice(idx,1); saveAll(); renderTrash(); }
 document.getElementById('emptyTrashBtn').addEventListener('click', ()=> 
             { if(!confirm('حذف نهائي لكل المحذوفات؟')) return; 
-            trash={faults:[],orders:[],attendance:[]}; 
+            trash={faults:[],orders:[],attendance:[],maintenance:[]}; 
             saveAll(); 
             renderTrash(); });
 
+/* MAINTENANCE CRUD */
+let editingMaintenanceId = null;
+document.getElementById('addMaintenanceBtn').addEventListener('click', ()=> {
+  if(editingMaintenanceId) return saveEditMaintenance(); addMaintenance();});
+document.getElementById('clearMaintenanceBtn').addEventListener('click', clearMaintenanceForm);
+
+function addMaintenance(){
+  const m = { 
+    id: uid(), 
+    machine: document.getElementById('mainMachine').value.trim(), 
+    line: document.getElementById('mainLine').value.trim(), 
+    person: document.getElementById('mainPerson').value.trim(), 
+    date: formatDateOnly(document.getElementById('mainDate').value), 
+    lcode: document.getElementById('mainLcode').value.trim(), 
+    partName: document.getElementById('mainPartName').value.trim(), 
+    partQty: document.getElementById('mainPartQty').value.trim(), 
+    type: document.getElementById('mainType').value.trim(), 
+    notes: document.getElementById('mainNotes').value.trim() 
+  };
+  
+  // ابعت للـ Server
+  fetch(API_URL, {
+    method: 'POST',
+    body: JSON.stringify({ kind: 'maintenance', op: 'add', data: m })
+  }).then(r => r.json())
+    .then(res => {
+      if (!res.ok) alert('في مشكلة في حفظ الصيانة على السيرفر، هيتحفظ Local بس');
+    }).catch(err => {
+      console.error(err);
+      alert('السيرفر مش متاح حاليًا، هيتحفظ Local بس');
+    });
+  
+  maintenance.unshift(m); 
+  clearMaintenanceForm(); 
+  renderMaintenanceTable(); 
+  renderTrash();
+}
+
+function startEditMaintenance(id){
+  const m = maintenance.find(x=>x.id===id); 
+  if(!m) return alert('غير موجود'); 
+  editingMaintenanceId=id; 
+  document.getElementById('mainMachine').value=m.machine; 
+  document.getElementById('mainLine').value=m.line; 
+  document.getElementById('mainPerson').value=m.person; 
+  document.getElementById('mainDate').value=m.date; 
+  document.getElementById('mainLcode').value=m.lcode; 
+  document.getElementById('mainPartName').value=m.partName; 
+  document.getElementById('mainPartQty').value=m.partQty; 
+  document.getElementById('mainType').value=m.type; 
+  document.getElementById('mainNotes').value=m.notes; 
+  document.getElementById('addMaintenanceBtn').innerText='حفظ التعديل';
+}
+
+function saveEditMaintenance(){
+  const idx = maintenance.findIndex(x=>x.id===editingMaintenanceId); 
+  if(idx===-1) return;
+
+  maintenance[idx].machine  = document.getElementById('mainMachine').value.trim();
+  maintenance[idx].line     = document.getElementById('mainLine').value.trim();
+  maintenance[idx].person   = document.getElementById('mainPerson').value.trim();
+  maintenance[idx].date     = formatDateOnly(document.getElementById('mainDate').value);
+  maintenance[idx].lcode    = document.getElementById('mainLcode').value.trim();
+  maintenance[idx].partName = document.getElementById('mainPartName').value.trim();
+  maintenance[idx].partQty  = document.getElementById('mainPartQty').value.trim();
+  maintenance[idx].type     = document.getElementById('mainType').value.trim();
+  maintenance[idx].notes    = document.getElementById('mainNotes').value.trim();
+
+  // ابعت Update للـ Sheet
+  const m = maintenance[idx];
+  fetch(API_URL, {
+    method: 'POST',
+    body: JSON.stringify({ kind: 'maintenance', op: 'update', data: m })
+  }).then(r=>r.json())
+    .then(res => {
+      if(!res.ok) alert('التعديل لم يُحفظ على السيرفر (Sheet)');
+    })
+    .catch(err => {
+      console.error(err);
+      alert('السيرفر مش متاح، التعديل اتحفظ Local بس');
+    });
+
+  editingMaintenanceId=null; 
+  clearMaintenanceForm(); 
+  renderMaintenanceTable();
+}
+
+function clearMaintenanceForm(){ 
+  document.getElementById('mainMachine').value=''; 
+  document.getElementById('mainLine').value=''; 
+  document.getElementById('mainPerson').value=''; 
+  document.getElementById('mainDate').value=getTodayDate(); 
+  document.getElementById('mainLcode').value=''; 
+  document.getElementById('mainPartName').value=''; 
+  document.getElementById('mainPartQty').value='0'; 
+  document.getElementById('mainType').value='أسبوعية'; 
+  document.getElementById('mainNotes').value=''; 
+  editingMaintenanceId=null; 
+  document.getElementById('addMaintenanceBtn').innerText='إضافة صيانة'; 
+}
+
+function moveToTrashMaintenance(id){
+  const idx = maintenance.findIndex(x=>x.id===id);
+  if(idx === -1) return;
+  
+  // علّم كـ deleted = true (soft delete)
+  maintenance[idx].deleted = true;
+  
+  // ابعت للـ Server كـ update (يخليها في الشيت بـ deleted = true)
+  fetch(API_URL, {
+    method: 'POST',
+    body: JSON.stringify({ kind: 'maintenance', op: 'update', data: maintenance[idx] })
+  }).then(r=>r.json())
+    .catch(err => console.error('خطأ في الحذف:', err));
+  
+  // اسحب من maintenance وحطها في trash
+  const movedItem = maintenance.splice(idx,1)[0];
+  trash.maintenance.unshift(movedItem);
+  
+  saveAll();
+  renderMaintenanceTable();
+  renderTrash();
+}
+
+function restoreMaintenance(id){
+  const idx = trash.maintenance.findIndex(x=>x.id===id);
+  if(idx === -1) return;
+  
+  // اسحب من trash وعلّم deleted = false
+  const restoredItem = trash.maintenance.splice(idx,1)[0];
+  restoredItem.deleted = false;
+  
+  // ابعت للـ Server كـ update (يخليها في الشيت بـ deleted = false)
+  fetch(API_URL, {
+    method: 'POST',
+    body: JSON.stringify({ kind: 'maintenance', op: 'update', data: restoredItem })
+  }).then(r=>r.json())
+    .catch(err => console.error('خطأ في الاسترجاع:', err));
+  
+  maintenance.unshift(restoredItem);
+  saveAll();
+  renderMaintenanceTable();
+  renderTrash();
+}
+
+function permanentDeleteMaintenance(id){
+  const idx = trash.maintenance.findIndex(x=>x.id===id); 
+  if(idx===-1) return;
+  if(!confirm('حذف نهائي؟')) return;
+
+  const deletedItem = trash.maintenance.splice(idx,1)[0];
+  
+  // ابعت طلب حذف نهائي للـ Server
+  fetch(API_URL, {
+    method: 'POST',
+    body: JSON.stringify({ kind: 'maintenance', op: 'delete', data: { id: deletedItem.id } })
+  }).then(r=>r.json())
+    .catch(err => console.error(err));
+  
+  saveAll(); 
+  renderTrash();
+}
+
+/* MAINTENANCE FILTERS */
+document.getElementById('applyMaintenanceFilterBtn').addEventListener('click', applyMaintenanceFilters);
+function applyMaintenanceFilters(){ 
+  const q=(document.getElementById('searchMaintenance').value||'').toLowerCase();
+  const dateFrom = document.getElementById('dateFromMaintenance').value;
+  const dateTo = document.getElementById('dateToMaintenance').value;
+  
+  // Ensure card-view is visible on mobile
+  const cardsContainer = document.getElementById('maintenanceCards');
+  if(cardsContainer) cardsContainer.style.display = '';
+  
+  // Filter table view
+  document.querySelectorAll('#maintenanceTable tbody tr').forEach(tr=>{
+    const text = tr.innerText.toLowerCase();
+    const cells = tr.querySelectorAll('td');
+    const rowDate = cells[4]?.textContent || ''; // التاريخ في العمود 4
+    
+    const dateMatch = (!dateFrom || !dateTo || (rowDate >= dateFrom && rowDate <= dateTo));
+    tr.style.display = (!q || text.includes(q)) && dateMatch ? '' : 'none';
+  });
+  
+  // Filter card view
+  document.querySelectorAll('#maintenanceCards .order-card').forEach(card=>{
+    const text = card.innerText.toLowerCase();
+    const dateText = Array.from(card.querySelectorAll('.order-card-row')).find(row => row.textContent.includes('التاريخ'))?.textContent || '';
+    const rowDate = dateText.replace('التاريخ', '').replace(':', '').trim();
+    
+    const dateMatch = (!dateFrom || !dateTo || (rowDate >= dateFrom && rowDate <= dateTo));
+    card.style.display = (!q || text.includes(q)) && dateMatch ? '' : 'none';
+  });
+}
+
+// دالة منفصلة لفلتر التاريخ فقط
+document.getElementById('applyDateFilterMaintenanceBtn')?.addEventListener('click', applyMaintenanceFilters);
+document.getElementById('searchMaintenance')?.addEventListener('input', applyMaintenanceFilters);
+
+/* MAINTENANCE EXPORTS */
+document.getElementById('exportMaintenanceCsv').addEventListener('click', ()=>{
+  const visibleRows = Array.from(document.querySelectorAll('#maintenanceTable tbody tr')).filter(tr => tr.style.display !== 'none');
+  if(!visibleRows.length){ alert('لا توجد بيانات للتصدير'); return; }
+  
+  const headers=['#','machine','line','person','date','lcode','partName','partQty','type','notes'];
+  const rows = [];
+  visibleRows.forEach((tr, i) => {
+    const cells = tr.querySelectorAll('td');
+    rows.push({
+      '#': i+1,
+      machine: cells[1].textContent,
+      line: cells[2].textContent,
+      person: cells[3].textContent,
+      date: cells[4].textContent,
+      lcode: cells[5].textContent,
+      partName: cells[6].textContent,
+      partQty: cells[7].textContent,
+      type: cells[8].textContent,
+      notes: cells[9].textContent
+    });
+  });
+  const csv = arrayToCsv(headers, rows);
+  downloadBlob(csv, `maintenance_${new Date().toISOString().slice(0,10)}.csv`, 'text/csv;charset=utf-8;');
+});
+
+document.getElementById('exportMaintenanceDoc').addEventListener('click', ()=>{
+  const visibleRows = Array.from(document.querySelectorAll('#maintenanceTable tbody tr')).filter(tr => tr.style.display !== 'none');
+  if(!visibleRows.length){ alert('لا توجد بيانات للتصدير'); return; }
+  
+  const title = 'تقرير الصيانة';
+  const headers = ['#','الماكينة','الخط','القائم','التاريخ','L Number','القطعة','الكمية','النوع','الملاحظات'];
+  let html = `<html dir="rtl"><head><meta charset="utf-8"><title>${title}</title><style>table{width:100%;border-collapse:collapse}th,td{border:1px solid #666;padding:6px;text-align:right}</style></head><body><h2 style="text-align:center">نظام إدارة الأعطال والصيانة — الكهرباء</h2><h3 style="text-align:center">${title}</h3><p>تاريخ: ${new Date().toLocaleDateString()}</p><table><thead><tr>${headers.map(h=>'<th>'+h+'</th>').join('')}</tr></thead><tbody>`;
+  visibleRows.forEach((tr, i)=>{
+    const cells = tr.querySelectorAll('td');
+    html += `<tr><td>${i+1}</td><td>${escapeHtml(cells[1].textContent)}</td><td>${escapeHtml(cells[2].textContent)}</td><td>${escapeHtml(cells[3].textContent)}</td><td>${escapeHtml(cells[4].textContent)}</td><td>${escapeHtml(cells[5].textContent)}</td><td>${escapeHtml(cells[6].textContent)}</td><td>${escapeHtml(cells[7].textContent)}</td><td>${escapeHtml(cells[8].textContent)}</td><td>${escapeHtml(cells[9].textContent)}</td></tr>`;
+  });
+  html += '</tbody></table></body></html>';
+  downloadBlob(html, `maintenance_${new Date().toISOString().slice(0,10)}.doc`, 'application/msword');
+});
+
+document.getElementById('printMaintenanceBtn').addEventListener('click', ()=>{
+  const visibleRows = Array.from(document.querySelectorAll('#maintenanceTable tbody tr')).filter(tr => tr.style.display !== 'none');
+  if(!visibleRows.length){ alert('لا توجد بيانات للطباعة'); return; }
+  
+  const title='تقرير الصيانة'; 
+  let html = `<html dir="rtl"><head><meta charset="utf-8"><title>${title}</title><style>body{font-family:Arial;direction:rtl;padding:16px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #666;padding:6px;text-align:right}</style></head><body>`;
+  html += `<div style="text-align:center"><h2>نظام إدارة الأعطال والصيانة — الكهرباء</h2><h3>${title}</h3><p>تاريخ: ${new Date().toLocaleDateString()}</p></div>`;
+  html += `<table><thead><tr><th>#</th><th>الماكينة</th><th>الخط</th><th>القائم</th><th>التاريخ</th><th>L Number</th><th>القطعة</th><th>الكمية</th><th>النوع</th><th>الملاحظات</th></tr></thead><tbody>`;
+  visibleRows.forEach((tr, i)=> {
+    const cells = tr.querySelectorAll('td');
+    html += `<tr><td>${i+1}</td><td>${escapeHtml(cells[1].textContent)}</td><td>${escapeHtml(cells[2].textContent)}</td><td>${escapeHtml(cells[3].textContent)}</td><td>${escapeHtml(cells[4].textContent)}</td><td>${escapeHtml(cells[5].textContent)}</td><td>${escapeHtml(cells[6].textContent)}</td><td>${escapeHtml(cells[7].textContent)}</td><td>${escapeHtml(cells[8].textContent)}</td><td>${escapeHtml(cells[9].textContent)}</td></tr>`;
+  });
+  html += '</tbody></table></body></html>'; 
+  const w=window.open('','_blank'); 
+  w.document.write(html); 
+  w.document.close(); 
+  setTimeout(()=>w.print(),300);
+});
+
             document.getElementById('emptyTrashBtn').addEventListener('click', () => {
-  if (!confirm('حذف نهائي لكل المحذوفات (أعطال وأوامر)؟')) return;
+  if (!confirm('حذف نهائي لكل المحذوفات (أعطال وأوامر وصيانات)؟')) return;
 
   // جهّز الـ IDs اللي هتتمسح من الشيت
-  const faultIds = trash.faults.map(f => f.id);
-  const orderIds = trash.orders.map(o => o.id);
+  const faultIds = (trash.faults || []).map(f => f.id);
+  const orderIds = (trash.orders || []).map(o => o.id);
+  const maintenanceIds = (trash.maintenance || []).map(m => m.id);
+  const attendanceIds = (trash.attendance || []).map(a => a.id);
+  
+  const totalItems = faultIds.length + orderIds.length + maintenanceIds.length + attendanceIds.length;
+  console.log('🗑️ حذف نهائي - الأعطال:', faultIds.length, 'الأوامر:', orderIds.length, 'الصيانات:', maintenanceIds.length, 'الحضور:', attendanceIds.length, 'الإجمالي:', totalItems);
+
+  // اذا مافيش حاجة للحذف
+  if (totalItems === 0) {
+    alert('السلة فارغة - لا يوجد شيء للحذف');
+    return;
+  }
 
   const requests = [];
 
@@ -842,7 +1250,7 @@ document.getElementById('emptyTrashBtn').addEventListener('click', ()=>
       fetch(API_URL, {
         method: 'POST',
         body: JSON.stringify({ kind: 'fault', op: 'delete', data: { id } })
-      })
+      }).catch(e => console.error('خطأ حذف عطل:', id, e))
     );
   });
 
@@ -852,20 +1260,44 @@ document.getElementById('emptyTrashBtn').addEventListener('click', ()=>
       fetch(API_URL, {
         method: 'POST',
         body: JSON.stringify({ kind: 'order', op: 'delete', data: { id } })
-      })
+      }).catch(e => console.error('خطأ حذف أمر:', id, e))
     );
   });
 
-  // لما تخلص كل الطلبات (حتى لو في بعضها فشل)
-  Promise.allSettled(requests).then(() => {
+  // ابعت طلب حذف لكل صيانة
+  maintenanceIds.forEach(id => {
+    requests.push(
+      fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ kind: 'maintenance', op: 'delete', data: { id } })
+      }).catch(e => console.error('خطأ حذف صيانة:', id, e))
+    );
+  });
+
+  // ابعت طلب حذف لكل سجل حضور
+  attendanceIds.forEach(id => {
+    requests.push(
+      fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ kind: 'attendance', op: 'delete', data: { id } })
+      }).catch(e => console.error('خطأ حذف حضور:', id, e))
+    );
+  });
+
+  // لما تخلص كل الطلبات
+  Promise.allSettled(requests).then((results) => {
+    console.log('✅ انتهت جميع طلبات الحذف:', results);
     // فضّي السلة محليًا
-    trash = { faults: [], orders: [], attendance: [] };
+    trash = { faults: [], orders: [], maintenance: [], attendance: [] };
     saveAll();
     renderTrash();
-    alert('تم الحذف النهائي لكل المحذوفات من السلة، وحاولنا حذفها من DB أيضًا.');
+    // انتظر تحديث البيانات من السيرفر بعدين اظهر الـ alert
+    return loadTrashFromServer().then(() => {
+      alert('تم الحذف النهائي لـ ' + totalItems + ' سجل!');
+    });
   }).catch(err => {
     console.error('empty trash error', err);
-    alert('حدث خطأ أثناء الحذف من Google Sheet، لكن تم تفريغ السلة محليًا.');
+    alert('تم تفريغ السلة');
   });
 });
 
@@ -1379,10 +1811,23 @@ function drawDashboard(){
   const testing = faults.filter(f=>f.status==='تحت التجربة').length;
   const waitC = faults.filter(f=>f.status==='بانتظار رد الشركة').length;
   const waitP = faults.filter(f=>f.status==='بانتظار قطعة الغيار').length;
+  
+  const maintenanceTotal = maintenance.length;
+  const mainWeekly = maintenance.filter(m=>m.type==='أسبوعية').length;
+  const mainMonthly = maintenance.filter(m=>m.type==='شهرية').length;
+  const mainYearly = maintenance.filter(m=>m.type==='سنوية').length;
+  const mainEmergency = maintenance.filter(m=>m.type==='طارئة').length;
 
   const tiles = document.getElementById('tiles'); tiles.innerHTML='';
   const addTile = (title,val)=> { const d=document.createElement('div'); d.className='tile'; d.innerHTML=`<h4>${title}</h4><div style="font-weight:700;font-size:20px">${val}</div>`; tiles.appendChild(d); };
-  addTile('إجمالي الأعطال', total); addTile('تم الإصلاح', done); addTile('جاري الإصلاح', working); addTile('تحت التجربة', testing); addTile('بانتظار رد الشركة', waitC); addTile('بانتظار قطعة الغيار', waitP);
+  addTile('إجمالي الأعطال', total); 
+  addTile('تم الإصلاح', done); 
+  addTile('جاري الإصلاح', working); 
+  addTile('إجمالي الصيانات', maintenanceTotal);
+  addTile('صيانة أسبوعية', mainWeekly);
+  addTile('صيانة شهرية', mainMonthly);
+  addTile('صيانة سنوية', mainYearly);
+  addTile('صيانة طارئة', mainEmergency);
 
   const canvas = document.getElementById('pie'); const ctx = canvas.getContext('2d'); ctx.clearRect(0,0,canvas.width,canvas.height);
   const data = [done, working, testing, waitC, waitP]; const colors=['#8ed08e','#ffd966','#fff3b0','#ffd59e','#ffb4b4']; const labels=['تم الإصلاح','جاري الإصلاح','تحت التجربة','بانتظار رد الشركة','بانتظار قطعة الغيار'];
@@ -1398,7 +1843,7 @@ function drawDashboard(){
 }
 
 /* init render */
-renderFaultTable(); renderOrderTable(); renderAttendanceTable(); renderTrash(); drawDashboard();
+renderFaultTable(); renderOrderTable(); renderMaintenanceTable(); renderAttendanceTable(); renderTrash(); drawDashboard();
 
 function loadFromServer() {
   // 1) تحميل الأعطال من السيرفر
@@ -1442,7 +1887,28 @@ function loadFromServer() {
       console.error('خطأ في تحميل أوامر الشراء من السيرفر', err);
     });
 
-  // 3) تحميل سجلات الأجازات من السيرفر
+  // 3) تحميل سجلات الصيانة من السيرفر
+  fetch(API_URL + '?kind=maintenance')
+    .then(r => r.json())
+    .then(data => {
+      if (!Array.isArray(data)) return;
+      // نضّف التواريخ
+      data.forEach(m => { if(m.date) m.date = formatDateOnly(m.date); });
+      // فصل الصيانات النشطة عن المحذوفة بناءً على حقل "deleted"
+      maintenance = data.filter(m => !m.deleted && m.deleted !== 'Yes' && m.deleted !== 'TRUE' && m.deleted !== true);
+      const deletedMaintenance = data.filter(m => m.deleted === 'Yes' || m.deleted === 'TRUE' || m.deleted === true);
+      
+      trash.maintenance = deletedMaintenance;  // حط المحذوفة في السلة
+      renderMaintenanceTable();             // اعرض جدول الصيانات النشطة
+      renderTrash();                        // اعرض سلة المحذوفات
+      drawDashboard();                      // حدّث الـ Dashboard
+      saveAll();                            // احفظ البيانات محليًا
+    })
+    .catch(err => {
+      console.error('خطأ في تحميل سجلات الصيانة من السيرفر', err);
+    });
+
+  // 4) تحميل سجلات الأجازات من السيرفر
   fetch(API_URL + '?kind=attendance')
     .then(r => r.json())
     .then(data => {
@@ -1541,10 +2007,74 @@ function renderOrderTable(){
   saveAll(); 
 }
 
+function renderMaintenanceTable(){ 
+  const tbody = document.querySelector('#maintenanceTable tbody'); 
+  tbody.innerHTML=''; 
+  const cardsDiv = document.getElementById('maintenanceCards');
+  cardsDiv.innerHTML = '';
+  
+  maintenance.forEach((m,i)=>{ 
+    // Table row
+    const tr=document.createElement('tr'); 
+    tr.innerHTML = `<td>${i+1}</td><td>${escapeHtml(m.machine)}</td><td>${escapeHtml(m.line)}</td><td>${escapeHtml(m.person)}</td><td>${escapeHtml(m.date)}</td><td>${escapeHtml(m.lcode)}</td><td>${escapeHtml(m.partName)}</td><td>${escapeHtml(m.partQty)}</td><td>${escapeHtml(m.type)}</td><td>${escapeHtml(m.notes)}</td><td class="no-print actions"><button class="btn ghost" onclick="startEditMaintenance('${m.id}')">تعديل</button><button class="btn" onclick="moveToTrashMaintenance('${m.id}')">حذف</button></td>`; 
+    tbody.appendChild(tr); 
+    
+    // Card view for mobile
+    const card = document.createElement('div');
+    card.className = 'order-card';
+    card.innerHTML = `
+      <div style="text-align:center;font-weight:600;margin-bottom:12px;font-size:15px;padding-bottom:8px;border-bottom:2px solid #e9eef3">صيانة #${i+1}</div>
+      <div class="order-card-row"><div class="order-card-label">الماكينة:</div><div class="order-card-value">${displayValue(m.machine)}</div></div>
+      <div class="order-card-row"><div class="order-card-label">الخط:</div><div class="order-card-value">${displayValue(m.line)}</div></div>
+      <div class="order-card-row"><div class="order-card-label">القائم:</div><div class="order-card-value">${displayValue(m.person)}</div></div>
+      <div class="order-card-row"><div class="order-card-label">التاريخ:</div><div class="order-card-value">${displayValue(m.date)}</div></div>
+      <div class="order-card-row"><div class="order-card-label">L Number:</div><div class="order-card-value">${displayValue(m.lcode)}</div></div>
+      <div class="order-card-row"><div class="order-card-label">القطعة:</div><div class="order-card-value">${displayValue(m.partName)}</div></div>
+      <div class="order-card-row"><div class="order-card-label">الكمية:</div><div class="order-card-value">${displayValue(m.partQty)}</div></div>
+      <div class="order-card-row"><div class="order-card-label">النوع:</div><div class="order-card-value">${displayValue(m.type)}</div></div>
+      <div class="order-card-row"><div class="order-card-label">الملاحظات:</div><div class="order-card-value">${displayValue(m.notes)}</div></div>
+      <div class="order-card-actions">
+        <button class="btn ghost" onclick="startEditMaintenance('${m.id}')">تعديل</button>
+        <button class="btn" onclick="moveToTrashMaintenance('${m.id}')">حذف</button>
+      </div>
+    `;
+    cardsDiv.appendChild(card);
+  }); 
+  saveAll(); 
+}
+
 function renderTrash(){ const tf = document.querySelector('#trashFaults tbody'); tf.innerHTML=''; trash.faults.forEach((f,i)=>{ const tr=document.createElement('tr'); tr.innerHTML = `<td>${i+1} - ${escapeHtml(f.machine)} (${escapeHtml(f.date)})</td><td class="no-print actions"><button class="btn" onclick="restoreFault('${f.id}')">استرجاع</button><button class="btn ghost" onclick="permanentDeleteFault('${f.id}')">حذف نهائي</button></td>`; tf.appendChild(tr); }); const to = document.querySelector('#trashOrders tbody'); to.innerHTML=''; trash.orders.forEach((o,i)=>{ const tr=document.createElement('tr'); tr.innerHTML = `<td>${escapeHtml(o.orderNum)} - ${escapeHtml(o.date)}</td><td class="no-print actions"><button class="btn" onclick="restoreOrder('${o.id}')">استرجاع</button><button class="btn ghost" onclick="permanentDeleteOrder('${o.id}')">حذف نهائي</button></td>`; to.appendChild(tr); }); }
 function renderTrash(){
-  const tf = document.querySelector('#trashFaults tbody'); tf.innerHTML=''; trash.faults.forEach((f,i)=>{ const tr=document.createElement('tr'); tr.innerHTML = `<td>${i+1} - ${escapeHtml(f.machine)} (${escapeHtml(f.date)})</td><td class="no-print actions"><button class="btn" onclick="restoreFault('${f.id}')">استرجاع</button><button class="btn ghost" onclick="permanentDeleteFault('${f.id}')">حذف نهائي</button></td>`; tf.appendChild(tr); });
-  const to = document.querySelector('#trashOrders tbody'); to.innerHTML=''; trash.orders.forEach((o,i)=>{ const tr=document.createElement('tr'); tr.innerHTML = `<td>${escapeHtml(o.orderNum)} - ${escapeHtml(o.date)}</td><td class="no-print actions"><button class="btn" onclick="restoreOrder('${o.id}')">استرجاع</button><button class="btn ghost" onclick="permanentDeleteOrder('${o.id}')">حذف نهائي</button></td>`; to.appendChild(tr); });
+  const tf = document.querySelector('#trashFaults tbody');
+  if(tf) {
+    tf.innerHTML='';
+    (trash.faults || []).forEach((f,i)=>{
+      const tr=document.createElement('tr');
+      tr.innerHTML = `<td>${i+1} - ${escapeHtml(f.machine)} (${escapeHtml(f.date)})</td><td class="no-print actions"><button class="btn" onclick="restoreFault('${f.id}')">استرجاع</button><button class="btn ghost" onclick="permanentDeleteFault('${f.id}')">حذف نهائي</button></td>`;
+      tf.appendChild(tr);
+    });
+  }
+
+  const to = document.querySelector('#trashOrders tbody');
+  if(to) {
+    to.innerHTML='';
+    (trash.orders || []).forEach((o,i)=>{
+      const tr=document.createElement('tr');
+      tr.innerHTML = `<td>${escapeHtml(o.orderNum)} - ${escapeHtml(o.date)}</td><td class="no-print actions"><button class="btn" onclick="restoreOrder('${o.id}')">استرجاع</button><button class="btn ghost" onclick="permanentDeleteOrder('${o.id}')">حذف نهائي</button></td>`;
+      to.appendChild(tr);
+    });
+  }
+
+  const tm = document.querySelector('#trashMaintenance tbody');
+  if(tm){
+    tm.innerHTML='';
+    (trash.maintenance||[]).forEach((m,i)=>{
+      const tr=document.createElement('tr');
+      tr.innerHTML = `<td>${i+1} - ${escapeHtml(m.machine)} (${escapeHtml(m.date)})</td><td class="no-print actions"><button class="btn" onclick="restoreMaintenance('${m.id}')">استرجاع</button><button class="btn ghost" onclick="permanentDeleteMaintenance('${m.id}')">حذف نهائي</button></td>`;
+      tm.appendChild(tr);
+    });
+  }
+
   const ta = document.querySelector('#trashAttendance tbody');
   if(ta){
     ta.innerHTML='';
