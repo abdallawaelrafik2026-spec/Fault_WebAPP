@@ -129,7 +129,7 @@
             <option value="">اختر الماكينة</option>
           </select>
         </div>
-        <div id="customMachineGroupContainer" style="display:none">
+        <div id="customMachineGroupContainer" style="display:none">          
           <div id="customMachinePlaceContainer">
             <label style="margin-top:6px">مكان الماكينة</label>
             <input type="text" id="customMachinePlace" placeholder="أدخل مكان الماكينة" />
@@ -223,9 +223,10 @@
 
       <div id="faultsPagination" style="margin-top:12px; text-align:center; display:flex; gap:6px; justify-content:center; flex-wrap:wrap"></div>
 
-      <!-- print / PDF button placed below table as requested (B) -->
-      <div style="margin-top:10px; text-align:left;">
-        <button class="btn" id="printPdfAll">طباعة / حفظ كـ PDF</button>
+      <!-- print / PDF buttons -->
+      <div style="margin-top:10px; text-align:left; display:flex; gap:8px;">
+        <button class="btn" id="printPdfCurrentPage">طباعة الصفحة الحالية</button>
+        <button class="btn" style="background:#0077b6" id="printPdfAll">طباعة الكل</button>
       </div>
     </div>
   </div>
@@ -334,8 +335,9 @@
 
       <div id="maintenancePagination" style="margin-top:12px; text-align:center; display:flex; gap:6px; justify-content:center; flex-wrap:wrap"></div>
 
-      <div style="margin-top:10px; text-align:left;">
-        <button class="btn" id="printMaintenanceBtn">طباعة / حفظ كـ PDF</button>
+      <div style="margin-top:10px; text-align:left; display:flex; gap:8px;">
+        <button class="btn" id="printMaintenanceCurrentPage">طباعة الصفحة الحالية</button>
+        <button class="btn" style="background:#0077b6" id="printMaintenanceBtn">طباعة الكل</button>
       </div>
     </div>
   </div>
@@ -404,9 +406,10 @@
 
       <div id="ordersPagination" style="margin-top:12px; text-align:center; display:flex; gap:6px; justify-content:center; flex-wrap:wrap"></div>
 
-      <!-- print / PDF button placed below table as requested (B) -->
-      <div style="margin-top:10px; text-align:left;">
-        <button class="btn" id="printOrdersBtn">طباعة / حفظ كـ PDF</button>
+      <!-- print / PDF buttons -->
+      <div style="margin-top:10px; text-align:left; display:flex; gap:8px;">
+        <button class="btn" id="printOrdersCurrentPage">طباعة الصفحة الحالية</button>
+        <button class="btn" style="background:#0077b6" id="printOrdersBtn">طباعة الكل</button>
       </div>
     </div>
   </div>
@@ -472,8 +475,9 @@
 
       <div id="attendancePagination" style="margin-top:12px; text-align:center; display:flex; gap:6px; justify-content:center; flex-wrap:wrap"></div>
 
-      <div style="margin-top:10px; text-align:left;">
-        <button class="btn" id="printAttendanceBtn">طباعة / حفظ كـ PDF</button>
+      <div style="margin-top:10px; text-align:left; display:flex; gap:8px;">
+        <button class="btn" id="printAttendanceCurrentPage">طباعة الصفحة الحالية</button>
+        <button class="btn" style="background:#0077b6" id="printAttendanceBtn">طباعة الكل</button>
       </div>
     </div>
   </div>
@@ -567,6 +571,10 @@ let currentPageFaults = 1;
 let currentPageOrders = 1;
 let currentPageMaintenance = 1;
 let currentPageAttendance = 1;
+let isFilteredFaults = false;
+let isFilteredOrders = false;
+let isFilteredMaintenance = false;
+let isFilteredAttendance = false;
 
 function getPaginatedData(data) {
   // عكس الترتيب (آخر عنصر أولاً)
@@ -728,8 +736,8 @@ const MACHINE_GROUPS = {
     "حوض النيكل 1+ Rectifier 1","حوض النيكل 2+ Rectifier 2","حوض الإزالة والتنشيط + Rectifier 3","جهاز نزع الاملاح من المياه","scrubber",
     "CToP 1","CToP 2","PolyWash 1","PolyWash 2","PolyExpose 1","PolyExpose 2","Plate Bender","Plate Punch IV",
     "Vertical burning-in oven","Vertical drying cabinet","Gravograph 1","Gravograph 2","plate check","Mathemat digital","و ملحقاته CTiP",
-    "Galvano Lab","قسم الاحبار","tensiometer","microscopes","Plate Inspection","اللورجي","حوض الصيانه","وحده المعالجه","Mathemat digital 2"],
-  "معمل الجودة": ["__custom__"],
+    "Galvano Lab","قسم الاحبار","tensiometer","microscopes","Plate Inspection","اللورجي","حوض الصيانه","وحده المعالجه","Mathemat digital 2","معمل الجودة"
+  ],
   "أخري": ["__custom__"]
 };
 
@@ -758,17 +766,15 @@ function populateItemsForGroup(groupName, itemSelectId){
     customContainer = document.getElementById('customMainGroupContainer');
   }
   
-  // إذا كانت المجموعة المختارة "أخري" أو "معمل الجودة"، اخفِ select واعرض حقول النص الحر
+ // إذا كانت المجموعة المختارة "أخري" أو "معمل الجودة"، اخفِ select واعرض حقول النص الحر
   if(groupName === 'أخري' || groupName === 'معمل الجودة') {
     sel.innerHTML = '<option value="">اختر الماكينة</option>';
     sel.disabled = true;
     if(itemContainer) itemContainer.style.display = 'none';
     if(customContainer) customContainer.style.display = 'block';
-    
     let placeEl = null;
     let nameEl = null;
     let placeContainer = null;
-    
     // اختر المعرفات الصحيحة حسب نوع النموذج
     if(itemSelectId === 'machineItem') {
       placeEl = document.getElementById('customMachinePlace');
@@ -779,7 +785,6 @@ function populateItemsForGroup(groupName, itemSelectId){
       nameEl = document.getElementById('customMainName');
       placeContainer = document.getElementById('customMainPlaceContainer');
     }
-    
     // إخفاء حقل "مكان الماكينة" فقط لـ "معمل الجودة" وإظهاره لـ "أخري"
     if(groupName === 'معمل الجودة') {
       if(placeContainer) placeContainer.style.display = 'none';
@@ -796,11 +801,9 @@ function populateItemsForGroup(groupName, itemSelectId){
   // إظهار select وإخفاء حقول النص الحر
   if(itemContainer) itemContainer.style.display = 'block';
   if(customContainer) customContainer.style.display = 'none';
-  
   let placeContainer = null;
   let placeEl = null;
   let nameEl = null;
-  
   // اختر المعرفات الصحيحة حسب نوع النموذج
   if(itemSelectId === 'machineItem') {
     placeContainer = document.getElementById('customMachinePlaceContainer');
@@ -811,10 +814,8 @@ function populateItemsForGroup(groupName, itemSelectId){
     placeEl = document.getElementById('customMainPlace');
     nameEl = document.getElementById('customMainName');
   }
-  
   // إظهار حقل "مكان الماكينة" إذا كان موجوداً
   if(placeContainer) placeContainer.style.display = 'block';
-  
   // تأكد من إزالة صفة required من حقول النص الحر عند اختيار مجموعة عادية
   if(placeEl) placeEl.removeAttribute('required');
   if(nameEl) nameEl.removeAttribute('required');
@@ -830,22 +831,22 @@ function getSelectedMachineLineFromGroups(groupId, itemId){
   const line = g ? (g.value||'') : '';
   let machine = it ? (it.value||'') : '';
   
-  // إذا كانت المجموعة "أخري" أو "معمل الجودة"، احصل على القيم من حقول النص الحر
-  if(line === 'أخري' || line === 'معمل الجودة') {
+  // إذا كانت المجموعة "أخري"، احصل على القيم من حقول النص الحر
+  if(line === 'أخري') {
     if(itemId === 'machineItem') {
       const place = document.getElementById('customMachinePlace');
       const name = document.getElementById('customMachineName');
       machine = (name ? name.value.trim() : '');
-      // استخدم place كـ machine إذا كان هناك قيمة
-      if(place && place.value.trim()) {
+      // استخدم place كـ machine فقط إذا كانت المجموعة "أخري" وليست "معمل الجودة"
+      if(place && place.value.trim() && line !== 'معمل الجودة') {
         machine = place.value.trim() + ' - ' + machine;
       }
     } else if(itemId === 'mainItem') {
       const place = document.getElementById('customMainPlace');
       const name = document.getElementById('customMainName');
       machine = (name ? name.value.trim() : '');
-      // استخدم place كـ machine فقط إذا كانت المجموعة "أخري" وليست "معمل الجودة"
-      if(place && place.value.trim() && line !== 'معمل الجودة') {
+      // استخدم place كـ machine إذا كان هناك قيمة
+      if(place && place.value.trim()) {
         machine = place.value.trim() + ' - ' + machine;
       }
     }
@@ -1783,35 +1784,21 @@ document.getElementById('applyMaintenanceFilterBtn').addEventListener('click', a
 function applyMaintenanceFilters(){ 
   const q=(document.getElementById('searchMaintenance').value||'').toLowerCase();
   const filterType = (document.getElementById('filterMaintenanceType')?.value||'').trim();
-  const dateFrom = document.getElementById('dateFromMaintenance').value;
-  const dateTo = document.getElementById('dateToMaintenance').value;
-  
-  // Ensure card-view is visible on mobile
+  const dateFrom = document.getElementById('dateFromMaintenance')?.value;
+  const dateTo = document.getElementById('dateToMaintenance')?.value;
+
+  // عرض البطاقات على الموبايل إذا وُجدت
   const cardsContainer = document.getElementById('maintenanceCards');
   if(cardsContainer) cardsContainer.style.display = '';
-  
-  // Filter table view
-  document.querySelectorAll('#maintenanceTable tbody tr').forEach(tr=>{
-    const text = tr.innerText.toLowerCase();
-    const cells = tr.querySelectorAll('td');
-    const rowDate = cells[4]?.textContent || ''; // التاريخ في العمود 4
-    const rowType = (cells[8]?.textContent||'').trim();
-    const typeMatch = !filterType || rowType === filterType;
-    const dateMatch = (!dateFrom || !dateTo || (rowDate >= dateFrom && rowDate <= dateTo));
-    tr.style.display = ((!q || text.includes(q)) && dateMatch && typeMatch) ? '' : 'none';
-  });
-  
-  // Filter card view
-  document.querySelectorAll('#maintenanceCards .order-card').forEach(card=>{
-    const text = card.innerText.toLowerCase();
-    const dateText = Array.from(card.querySelectorAll('.order-card-row')).find(row => row.textContent.includes('التاريخ'))?.textContent || '';
-    const rowDate = dateText.replace('التاريخ', '').replace(':', '').trim();
-    const typeText = Array.from(card.querySelectorAll('.order-card-row')).find(row => row.textContent.includes('النوع'))?.textContent || '';
-    const rowType = typeText.replace('النوع', '').replace(':','').trim();
-    const typeMatch = !filterType || rowType === filterType;
-    const dateMatch = (!dateFrom || !dateTo || (rowDate >= dateFrom && rowDate <= dateTo));
-    card.style.display = ((!q || text.includes(q)) && dateMatch && typeMatch) ? '' : 'none';
-  });
+
+  // حدّد حالة الفلترة بناءً على الحقول الحالية
+  const active = Boolean(q || filterType || dateFrom || dateTo);
+  isFilteredMaintenance = active;
+  currentPageMaintenance = 1;
+  document.getElementById('maintenancePagination').style.display = isFilteredMaintenance ? 'none' : '';
+
+  // إعادة عرض الجدول بحسب الحالة (filtered vs normal)
+  renderMaintenanceTable();
 }
 
 // دالة منفصلة لفلتر التاريخ فقط
@@ -1859,7 +1846,8 @@ document.getElementById('exportMaintenanceDoc').addEventListener('click', ()=>{
   downloadBlob(html, `maintenance_${new Date().toISOString().slice(0,10)}.doc`, 'application/msword');
 });
 
-document.getElementById('printMaintenanceBtn').addEventListener('click', ()=>{
+/* Print Current Page - Maintenance */
+document.getElementById('printMaintenanceCurrentPage')?.addEventListener('click', ()=>{
   const visibleRows = Array.from(document.querySelectorAll('#maintenanceTable tbody tr')).filter(tr => tr.style.display !== 'none');
   if(!visibleRows.length){ alert('لا توجد بيانات للطباعة'); return; }
   
@@ -1870,6 +1858,29 @@ document.getElementById('printMaintenanceBtn').addEventListener('click', ()=>{
   visibleRows.forEach((tr, i)=> {
     const cells = tr.querySelectorAll('td');
     html += `<tr><td>${i+1}</td><td>${escapeHtml(cells[1].textContent)}</td><td>${escapeHtml(cells[2].textContent)}</td><td>${escapeHtml(cells[3].textContent)}</td><td>${escapeHtml(cells[4].textContent)}</td><td>${escapeHtml(cells[5].textContent)}</td><td>${escapeHtml(cells[6].textContent)}</td><td>${escapeHtml(cells[7].textContent)}</td><td>${escapeHtml(cells[8].textContent)}</td><td>${escapeHtml(cells[9].textContent)}</td></tr>`;
+  });
+  html += '</tbody></table></body></html>'; 
+  const w=window.open('','_blank'); 
+  w.document.write(html); 
+  w.document.close(); 
+  setTimeout(()=>w.print(),300);
+});
+
+/* Print ALL - Maintenance (all data regardless of pagination) */
+document.getElementById('printMaintenanceBtn').removeEventListener('click', null);
+document.getElementById('printMaintenanceBtn').addEventListener('click', ()=>{
+  if(!maintenance || !maintenance.length){ alert('لا توجد بيانات للطباعة'); return; }
+  
+  // احصل على كل الصيانات الغير محذوفة
+  const allMaintenance = maintenance.filter(m => !m.deleted);
+  if(!allMaintenance.length){ alert('لا توجد بيانات للطباعة'); return; }
+  
+  const title='تقرير الصيانة'; 
+  let html = `<html dir="rtl"><head><meta charset="utf-8"><title>${title}</title><style>body{font-family:Arial;direction:rtl;padding:16px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #666;padding:6px;text-align:right}</style></head><body>`;
+  html += `<div style="text-align:center"><h2>نظام إدارة الأعطال والصيانة — الكهرباء</h2><h3>${title}</h3><p>تاريخ: ${new Date().toLocaleDateString()}</p></div>`;
+  html += `<table><thead><tr><th>#</th><th>الماكينة</th><th>الخط</th><th>القائم</th><th>التاريخ</th><th>L Number</th><th>القطعة</th><th>الكمية</th><th>النوع</th><th>الملاحظات</th></tr></thead><tbody>`;
+  allMaintenance.forEach((m, i)=> {
+    html += `<tr><td>${i+1}</td><td>${escapeHtml(m.machine)}</td><td>${escapeHtml(m.line)}</td><td>${escapeHtml(m.person)}</td><td>${escapeHtml(m.date)}</td><td>${escapeHtml(m.lcode)}</td><td>${escapeHtml(m.partName)}</td><td>${escapeHtml(m.partQty)}</td><td>${escapeHtml(m.type)}</td><td>${escapeHtml(m.notes||'')}</td></tr>`;
   });
   html += '</tbody></table></body></html>'; 
   const w=window.open('','_blank'); 
@@ -2157,38 +2168,70 @@ function renderAttendanceTable(){
   const cardsDiv = document.getElementById('attendanceCards'); 
   cardsDiv.innerHTML=''; 
   
-  // احسب pagination
-  const paginationData = paginate(attendance, currentPageAttendance);
-  const { items: pageAttendance, totalPages } = paginationData;
-  
-  pageAttendance.forEach((a, pageIndex)=>{ 
-    // الرقم العام (مع الترتيب التنازلي)
-    const globalIndex = (currentPageAttendance - 1) * ITEMS_PER_PAGE + pageIndex + 1;
-    
+  // اقرأ شروط الفلترة الحالية
+  const q = (document.getElementById('searchAttendance')?.value||'').toLowerCase();
+  const dateFrom = document.getElementById('dateFromAttendance')?.value;
+  const dateTo = document.getElementById('dateToAttendance')?.value;
+
+  let dataToRender = [];
+  let totalPages = 1;
+  if(isFilteredAttendance){
+    dataToRender = attendance.filter(a => {
+      if(a.deleted) return false;
+      const name = (a.workerName || a.personName || a.empName || a.emp || '').toString();
+      const text = `${name} ${a.workerNum||a.personId||''} ${a.absenceDate||a.date||''} ${a.notes||''}`.toLowerCase();
+      const rowDate = (a.absenceDate || a.date || '').toString();
+      let dateMatch = true;
+      if(dateFrom && dateTo) dateMatch = (rowDate >= dateFrom && rowDate <= dateTo);
+      else if(dateFrom) dateMatch = (rowDate >= dateFrom);
+      else if(dateTo) dateMatch = (rowDate <= dateTo);
+      return (!q || text.includes(q)) && dateMatch;
+    });
+    totalPages = 1;
+  } else {
+    const paginationData = paginate(attendance, currentPageAttendance);
+    dataToRender = paginationData.items;
+    totalPages = paginationData.totalPages;
+  }
+
+  dataToRender.forEach((a, pageIndex)=>{
+    const globalIndex = isFilteredAttendance ? pageIndex + 1 : (currentPageAttendance - 1) * ITEMS_PER_PAGE + pageIndex + 1;
     const tr=document.createElement('tr'); 
-    tr.innerHTML = `<td>${globalIndex}</td><td>${escapeHtml(a.workerName)}</td><td>${escapeHtml(a.workerNum)}</td><td>${escapeHtml(a.absenceDate)}</td><td>${escapeHtml(a.daysCount)}</td><td>${escapeHtml(a.absenceDay)}</td><td class="no-print actions"><button class="btn ghost" onclick="startEditAttendance('${a.id}')">تعديل</button><button class="btn" onclick="deleteAttendance('${a.id}')">حذف</button></td>`; 
+    const name = escapeHtml(a.workerName || a.personName || a.empName || a.emp || '');
+    const num = escapeHtml(a.workerNum || a.personId || '');
+    const date = escapeHtml(a.absenceDate || a.date || '');
+    const days = escapeHtml(a.daysCount || a.days || '');
+    const dayName = escapeHtml(a.absenceDay || a.dayType || '');
+    tr.innerHTML = `<td>${globalIndex}</td><td>${name}</td><td>${num}</td><td>${date}</td><td>${days}</td><td>${dayName}</td><td class="no-print actions"><button class="btn ghost" onclick="startEditAttendance('${a.id}')">تعديل</button><button class="btn" onclick="deleteAttendance('${a.id}')">حذف</button></td>`; 
     tbody.appendChild(tr);
-    
-    // card view
+
     const card = document.createElement('div'); 
     card.className='order-card'; 
     card.innerHTML = `
-      <div style="text-align:center;font-weight:600;margin-bottom:12px;font-size:15px;padding-bottom:8px;border-bottom:2px solid #e9eef3">${globalIndex} - ${escapeHtml(a.workerName)}</div>
-      <div class="order-card-row"><div class="order-card-label">رقم العامل:</div><div class="order-card-value">${displayValue(a.workerNum)}</div></div>
-      <div class="order-card-row"><div class="order-card-label">تاريخ التغيب:</div><div class="order-card-value">${displayValue(a.absenceDate)}</div></div>
-      <div class="order-card-row"><div class="order-card-label">عدد الأيام:</div><div class="order-card-value">${displayValue(a.daysCount)}</div></div>
-      <div class="order-card-row"><div class="order-card-label">يوم التغيب:</div><div class="order-card-value">${displayValue(a.absenceDay)}</div></div>
-      <div class="order-card-actions"><button class="btn ghost" onclick="startEditAttendance('${a.id}')">تعديل</button><button class="btn" onclick="deleteAttendance('${a.id}')">حذف</button></div>
+      <div style="text-align:center;font-weight:600;margin-bottom:12px;font-size:15px;padding-bottom:8px;border-bottom:2px solid #e9eef3">حضور #${globalIndex}</div>
+      <div class="order-card-row"><div class="order-card-label">الموظف:</div><div class="order-card-value">${displayValue(name)}</div></div>
+      <div class="order-card-row"><div class="order-card-label">القسم:</div><div class="order-card-value">${displayValue(a.department || '')}</div></div>
+      <div class="order-card-row"><div class="order-card-label">التاريخ:</div><div class="order-card-value">${displayValue(date)}</div></div>
+      <div class="order-card-row"><div class="order-card-label">الدخول:</div><div class="order-card-value">${displayValue(a.checkIn || '')}</div></div>
+      <div class="order-card-row"><div class="order-card-label">الخروج:</div><div class="order-card-value">${displayValue(a.checkOut || '')}</div></div>
+      <div class="order-card-row"><div class="order-card-label">الساعات:</div><div class="order-card-value">${displayValue(a.hours || '')}</div></div>
+      <div class="order-card-row"><div class="order-card-label">الملاحظات:</div><div class="order-card-value">${displayValue(a.notes || '')}</div></div>
+      <div class="order-card-actions">
+        <button class="btn ghost" onclick="startEditAttendance('${a.id}')">تعديل</button>
+        <button class="btn" onclick="deleteAttendance('${a.id}')">حذف</button>
+      </div>
     `; 
     cardsDiv.appendChild(card);
   }); 
-  
-  // تحديث أزرار pagination
-  updatePaginationButtons('#attendancePagination', totalPages, currentPageAttendance, (pageNum) => {
-    currentPageAttendance = pageNum;
-    renderAttendanceTable();
-  });
-  
+
+  // تحديث أزرار pagination - إخفاء إذا كانت مفلترة
+  if(!isFilteredAttendance) {
+    updatePaginationButtons('#attendancePagination', totalPages, currentPageAttendance, (pageNum) => {
+      currentPageAttendance = pageNum;
+      renderAttendanceTable();
+    });
+  }
+
   saveAll(); 
 }
 
@@ -2196,32 +2239,21 @@ function renderAttendanceTable(){
 document.getElementById('applyAttendanceFilterBtn').addEventListener('click', applyAttendanceFilters);
 function applyAttendanceFilters(){ 
   const q=(document.getElementById('searchAttendance').value||'').toLowerCase();
-  const dateFrom = document.getElementById('dateFromAttendance').value;
-  const dateTo = document.getElementById('dateToAttendance').value;
-  
+  const dateFrom = document.getElementById('dateFromAttendance')?.value;
+  const dateTo = document.getElementById('dateToAttendance')?.value;
+
   // Ensure card-view is visible on mobile
   const cardsContainer = document.getElementById('attendanceCards');
   if(cardsContainer) cardsContainer.style.display = '';
-  
-  // Filter table view
-  document.querySelectorAll('#attendanceTable tbody tr').forEach(tr=> {
-    const text = tr.innerText.toLowerCase();
-    const cells = tr.querySelectorAll('td');
-    const rowDate = cells[3]?.textContent || ''; // التاريخ في العمود 3
-    
-    const dateMatch = (!dateFrom || !dateTo || (rowDate >= dateFrom && rowDate <= dateTo));
-    tr.style.display = (!q || text.includes(q)) && dateMatch ? '' : 'none';
-  });
-  
-  // Filter card view
-  document.querySelectorAll('#attendanceCards .order-card').forEach(card=> {
-    const text = card.innerText.toLowerCase();
-    const dateText = Array.from(card.querySelectorAll('.order-card-row')).find(row => row.textContent.includes('تاريخ التغيب'))?.textContent || '';
-    const rowDate = dateText.replace('تاريخ التغيب', '').replace(':', '').trim();
-    
-    const dateMatch = (!dateFrom || !dateTo || (rowDate >= dateFrom && rowDate <= dateTo));
-    card.style.display = (!q || text.includes(q)) && dateMatch ? '' : 'none';
-  });
+
+  // Set filtered state based on inputs
+  const active = Boolean(q || dateFrom || dateTo);
+  isFilteredAttendance = active;
+  currentPageAttendance = 1;
+  document.getElementById('attendancePagination').style.display = isFilteredAttendance ? 'none' : '';
+
+  // Re-render table (renderAttendanceTable will use the filter inputs when isFilteredAttendance=true)
+  renderAttendanceTable();
 }
 
 // دالة منفصلة لفلتر التاريخ فقط
@@ -2265,7 +2297,8 @@ document.getElementById('exportAttendanceDoc').addEventListener('click', ()=>{
   downloadBlob(html, `attendance_${new Date().toISOString().slice(0,10)}.doc`, 'application/msword');
 });
 
-document.getElementById('printAttendanceBtn').addEventListener('click', ()=>{
+/* Print Current Page - Attendance */
+document.getElementById('printAttendanceCurrentPage')?.addEventListener('click', ()=>{
   // احصل على السجلات المرئية بعد الفلتر
   const visibleRows = Array.from(document.querySelectorAll('#attendanceTable tbody tr')).filter(tr => tr.style.display !== 'none');
   if(!visibleRows.length){ alert('لا توجد بيانات للطباعة'); return; }
@@ -2277,6 +2310,29 @@ document.getElementById('printAttendanceBtn').addEventListener('click', ()=>{
   visibleRows.forEach((tr, i)=> {
     const cells = tr.querySelectorAll('td');
     html += `<tr><td>${i+1}</td><td>${escapeHtml(cells[1].textContent)}</td><td>${escapeHtml(cells[2].textContent)}</td><td>${escapeHtml(cells[3].textContent)}</td><td>${escapeHtml(cells[4].textContent)}</td><td>${escapeHtml(cells[5].textContent)}</td></tr>`;
+  });
+  html += '</tbody></table></body></html>'; 
+  const w=window.open('','_blank'); 
+  w.document.write(html); 
+  w.document.close(); 
+  setTimeout(()=>w.print(),300);
+});
+
+/* Print ALL - Attendance (all data regardless of pagination) */
+document.getElementById('printAttendanceBtn').removeEventListener('click', null);
+document.getElementById('printAttendanceBtn').addEventListener('click', ()=>{
+  if(!attendance || !attendance.length){ alert('لا توجد بيانات للطباعة'); return; }
+  
+  // احصل على كل سجلات الحضور الغير محذوفة
+  const allAttendance = attendance.filter(a => !a.deleted);
+  if(!allAttendance.length){ alert('لا توجد بيانات للطباعة'); return; }
+  
+  const title='تقرير الغياب'; 
+  let html = `<html dir="rtl"><head><meta charset="utf-8"><title>${title}</title><style>body{font-family:Arial;direction:rtl;padding:16px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #666;padding:6px;text-align:right}</style></head><body>`;
+  html += `<div style="text-align:center"><h2>نظام إدارة الأعطال وأوامر الشراء — الكهرباء</h2><h3>${title}</h3><p>تاريخ: ${new Date().toLocaleDateString()}</p></div>`;
+  html += `<table><thead><tr><th>#</th><th>اسم العامل</th><th>رقم العامل</th><th>تاريخ التغيب</th><th>عدد الأيام</th><th>يوم التغيب</th></tr></thead><tbody>`;
+  allAttendance.forEach((a, i)=> {
+    html += `<tr><td>${i+1}</td><td>${escapeHtml(a.personName)}</td><td>${escapeHtml(a.personId)}</td><td>${escapeHtml(a.date)}</td><td>${escapeHtml(a.days)}</td><td>${escapeHtml(a.dayType)}</td></tr>`;
   });
   html += '</tbody></table></body></html>'; 
   const w=window.open('','_blank'); 
@@ -2305,25 +2361,12 @@ function applyFilters(){
   const cardsContainer = document.getElementById('faultCards');
   if(cardsContainer) cardsContainer.style.display = '';
   
-  // Filter table view
-  document.querySelectorAll('#faultTable tbody tr').forEach(tr=>{
-    const text = tr.innerText.toLowerCase();
-    const cells = tr.querySelectorAll('td');
-    const rowDate = cells[6]?.textContent || ''; // التاريخ في العمود 6
-    
-    const dateMatch = (!dateFrom || !dateTo || (rowDate >= dateFrom && rowDate <= dateTo));
-    tr.style.display = ((!q || text.includes(q)) && (!st || text.includes(st)) && dateMatch) ? '' : 'none';
-  });
-  
-  // Filter card view
-  document.querySelectorAll('#faultCards .fault-card').forEach(card=>{
-    const text = card.innerText.toLowerCase();
-    const dateText = Array.from(card.querySelectorAll('.fault-card-row')).find(row => row.textContent.includes('التاريخ'))?.textContent || '';
-    const rowDate = dateText.replace('التاريخ', '').replace(':', '').trim();
-    
-    const dateMatch = (!dateFrom || !dateTo || (rowDate >= dateFrom && rowDate <= dateTo));
-    card.style.display = ((!q || text.includes(q)) && (!st || text.includes(st)) && dateMatch) ? '' : 'none';
-  });
+  // Set filtered flag and re-render via data arrays (render will handle correct date logic)
+  const active = Boolean(q || st || dateFrom || dateTo);
+  isFilteredFaults = active;
+  currentPageFaults = 1;
+  document.getElementById('faultsPagination').style.display = isFilteredFaults ? 'none' : '';
+  renderFaultTable();
 }
 
 // دالة منفصلة لفلتر التاريخ فقط
@@ -2340,25 +2383,12 @@ function applyOrderFilters(){
   const cardsContainer = document.getElementById('orderCards');
   if(cardsContainer) cardsContainer.style.display = '';
   
-  // Filter table view
-  document.querySelectorAll('#orderTable tbody tr').forEach(tr=>{
-    const text = tr.innerText.toLowerCase();
-    const cells = tr.querySelectorAll('td');
-    const rowDate = cells[2]?.textContent || ''; // التاريخ في العمود 2
-    
-    const dateMatch = (!dateFrom || !dateTo || (rowDate >= dateFrom && rowDate <= dateTo));
-    tr.style.display = (!q || text.toLowerCase().includes(q)) && dateMatch ? '' : 'none';
-  });
-  
-  // Filter card view
-  document.querySelectorAll('#orderCards .order-card').forEach(card=>{
-    const text = card.innerText.toLowerCase();
-    const dateText = Array.from(card.querySelectorAll('.order-card-row')).find(row => row.textContent.includes('التاريخ'))?.textContent || '';
-    const rowDate = dateText.replace('التاريخ', '').replace(':', '').trim();
-    
-    const dateMatch = (!dateFrom || !dateTo || (rowDate >= dateFrom && rowDate <= dateTo));
-    card.style.display = (!q || text.includes(q)) && dateMatch ? '' : 'none';
-  });
+  // Set filtered flag and re-render via data arrays (render will handle correct date logic)
+  const active = Boolean(q || dateFrom || dateTo);
+  isFilteredOrders = active;
+  currentPageOrders = 1;
+  document.getElementById('ordersPagination').style.display = isFilteredOrders ? 'none' : '';
+  renderOrderTable();
 }
 
 // دالة منفصلة لفلتر التاريخ فقط
@@ -2420,23 +2450,6 @@ document.getElementById('exportDocAll').addEventListener('click', ()=> {
   downloadBlob(html, `faults_${new Date().toISOString().slice(0,10)}.doc`, 'application/msword');
 });
 
-/* Print/PDF (opens printable window with filtered table only) */
-document.getElementById('printPdfAll').addEventListener('click', ()=> {
-  const visibleRows = Array.from(document.querySelectorAll('#faultTable tbody tr')).filter(tr => tr.style.display !== 'none');
-  if(!visibleRows.length){ alert('لا توجد بيانات للطباعة'); return; }
-  
-  const title = 'تقرير الأعطال';
-  let html = `<html dir="rtl"><head><meta charset="utf-8"><title>${title}</title><style>body{font-family:Arial;direction:rtl;padding:16px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #666;padding:6px;text-align:right}</style></head><body>`;
-  html += `<div style="text-align:center"><h2>نظام إدارة الأعطال وأوامر الشراء — الكهرباء</h2><h3>${title}</h3><p>تاريخ: ${new Date().toLocaleDateString()}</p></div>`;
-  html += `<table><thead><tr><th>#</th><th>الماكينة</th><th>الخط</th><th>القائم</th><th>الوصف</th><th>حل العطل</th><th>الوردية</th><th>التاريخ</th><th>L Number</th><th>القطعة</th><th>الكمية</th><th>الحالة</th></tr></thead><tbody>`;
-  visibleRows.forEach((tr, i)=> {
-    const cells = tr.querySelectorAll('td');
-    html += `<tr><td>${i+1}</td><td>${escapeHtml(cells[1].textContent)}</td><td>${escapeHtml(cells[2].textContent)}</td><td>${escapeHtml(cells[3].textContent)}</td><td>${escapeHtml(cells[4].textContent)}</td><td>${escapeHtml(cells[5].textContent)}</td><td>${escapeHtml(cells[6].textContent)}</td><td>${escapeHtml(cells[7].textContent)}</td><td>${escapeHtml(cells[8].textContent)}</td><td>${escapeHtml(cells[9].textContent)}</td><td>${escapeHtml(cells[10].textContent)}</td><td>${escapeHtml(cells[11].textContent)}</td></tr>`;
-  });
-  html += '</tbody></table></body></html>';
-  const w = window.open('','_blank'); w.document.write(html); w.document.close(); setTimeout(()=> w.print(),400);
-});
-
 /* Orders exports (filtered only) */
 document.getElementById('exportOrdersCsv').addEventListener('click', ()=> {
   const visibleRows = Array.from(document.querySelectorAll('#orderTable tbody tr')).filter(tr => tr.style.display !== 'none');
@@ -2471,7 +2484,45 @@ document.getElementById('exportOrdersDoc').addEventListener('click', ()=> {
   html += '</tbody></table></body></html>'; 
   downloadBlob(html, `orders_${new Date().toISOString().slice(0,10)}.doc`, 'application/msword');
 });
-document.getElementById('printOrdersBtn').addEventListener('click', ()=> {
+/* Print Current Page - Faults */
+document.getElementById('printPdfCurrentPage')?.addEventListener('click', ()=> {
+  const visibleRows = Array.from(document.querySelectorAll('#faultTable tbody tr')).filter(tr => tr.style.display !== 'none');
+  if(!visibleRows.length){ alert('لا توجد بيانات للطباعة'); return; }
+  
+  const title = 'تقرير الأعطال';
+  let html = `<html dir="rtl"><head><meta charset="utf-8"><title>${title}</title><style>body{font-family:Arial;direction:rtl;padding:16px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #666;padding:6px;text-align:right}</style></head><body>`;
+  html += `<div style="text-align:center"><h2>نظام إدارة الأعطال وأوامر الشراء — الكهرباء</h2><h3>${title}</h3><p>تاريخ: ${new Date().toLocaleDateString()}</p></div>`;
+  html += `<table><thead><tr><th>#</th><th>الماكينة</th><th>الخط</th><th>القائم</th><th>الوصف</th><th>حل العطل</th><th>الوردية</th><th>التاريخ</th><th>L Number</th><th>القطعة</th><th>الكمية</th><th>الحالة</th></tr></thead><tbody>`;
+  visibleRows.forEach((tr, i)=> {
+    const cells = tr.querySelectorAll('td');
+    html += `<tr><td>${i+1}</td><td>${escapeHtml(cells[1].textContent)}</td><td>${escapeHtml(cells[2].textContent)}</td><td>${escapeHtml(cells[3].textContent)}</td><td>${escapeHtml(cells[4].textContent)}</td><td>${escapeHtml(cells[5].textContent)}</td><td>${escapeHtml(cells[6].textContent)}</td><td>${escapeHtml(cells[7].textContent)}</td><td>${escapeHtml(cells[8].textContent)}</td><td>${escapeHtml(cells[9].textContent)}</td><td>${escapeHtml(cells[10].textContent)}</td><td>${escapeHtml(cells[11].textContent)}</td></tr>`;
+  });
+  html += '</tbody></table></body></html>';
+  const w = window.open('','_blank'); w.document.write(html); w.document.close(); setTimeout(()=> w.print(),400);
+});
+
+/* Print ALL - Faults (all data regardless of pagination) */
+document.getElementById('printPdfAll').removeEventListener('click', null);
+document.getElementById('printPdfAll').addEventListener('click', ()=> {
+  if(!faults || !faults.length){ alert('لا توجد بيانات للطباعة'); return; }
+  
+  // حصل على كل الأعطال الغير محذوفة
+  const allFaults = faults.filter(f => !f.deleted);
+  if(!allFaults.length){ alert('لا توجد بيانات للطباعة'); return; }
+  
+  const title = 'تقرير الأعطال';
+  let html = `<html dir="rtl"><head><meta charset="utf-8"><title>${title}</title><style>body{font-family:Arial;direction:rtl;padding:16px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #666;padding:6px;text-align:right}</style></head><body>`;
+  html += `<div style="text-align:center"><h2>نظام إدارة الأعطال وأوامر الشراء — الكهرباء</h2><h3>${title}</h3><p>تاريخ: ${new Date().toLocaleDateString()}</p></div>`;
+  html += `<table><thead><tr><th>#</th><th>الماكينة</th><th>الخط</th><th>القائم</th><th>الوصف</th><th>حل العطل</th><th>الوردية</th><th>التاريخ</th><th>L Number</th><th>القطعة</th><th>الكمية</th><th>الحالة</th></tr></thead><tbody>`;
+  allFaults.forEach((f, i)=> {
+    html += `<tr><td>${i+1}</td><td>${escapeHtml(f.machine)}</td><td>${escapeHtml(f.line)}</td><td>${escapeHtml(f.person)}</td><td>${escapeHtml(f.description)}</td><td>${escapeHtml(f.solution||'')}</td><td>${escapeHtml(f.shift)}</td><td>${escapeHtml(f.date)}</td><td>${escapeHtml(f.lcode)}</td><td>${escapeHtml(f.partName)}</td><td>${escapeHtml(f.partQty)}</td><td>${escapeHtml(f.status)}</td></tr>`;
+  });
+  html += '</tbody></table></body></html>';
+  const w = window.open('','_blank'); w.document.write(html); w.document.close(); setTimeout(()=> w.print(),400);
+});
+
+/* Print Current Page - Orders */
+document.getElementById('printOrdersCurrentPage')?.addEventListener('click', ()=> {
   const visibleRows = Array.from(document.querySelectorAll('#orderTable tbody tr')).filter(tr => tr.style.display !== 'none');
   if(!visibleRows.length){ alert('لا توجد بيانات للطباعة'); return; }
   
@@ -2482,6 +2533,29 @@ document.getElementById('printOrdersBtn').addEventListener('click', ()=> {
   visibleRows.forEach((tr, i)=> {
     const cells = tr.querySelectorAll('td');
     html += `<tr><td>${i+1}</td><td>${escapeHtml(cells[0].textContent)}</td><td>${escapeHtml(cells[1].textContent)}</td><td>${escapeHtml(cells[2].textContent)}</td><td>${escapeHtml(cells[3].textContent)}</td><td>${escapeHtml(cells[4].textContent)}</td></tr>`;
+  });
+  html += '</tbody></table></body></html>'; 
+  const w=window.open('','_blank'); 
+  w.document.write(html); 
+  w.document.close(); 
+  setTimeout(()=>w.print(),300);
+});
+
+/* Print ALL - Orders (all data regardless of pagination) */
+document.getElementById('printOrdersBtn').removeEventListener('click', null);
+document.getElementById('printOrdersBtn').addEventListener('click', ()=> {
+  if(!orders || !orders.length){ alert('لا توجد بيانات للطباعة'); return; }
+  
+  // احصل على كل الأوامر الغير محذوفة
+  const allOrders = orders.filter(o => !o.deleted);
+  if(!allOrders.length){ alert('لا توجد بيانات للطباعة'); return; }
+  
+  const title='تقرير أوامر الشراء'; 
+  let html = `<html dir="rtl"><head><meta charset="utf-8"><title>${title}</title><style>body{font-family:Arial;direction:rtl;padding:16px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #666;padding:6px;text-align:right}</style></head><body>`;
+  html += `<div style="text-align:center"><h2>نظام إدارة الأعطال وأوامر الشراء — الكهرباء</h2><h3>${title}</h3><p>تاريخ: ${new Date().toLocaleDateString()}</p></div>`;
+  html += `<table><thead><tr><th>#</th><th>أمر الشراء</th><th>توريد</th><th>التاريخ</th><th>القائم</th><th>تفاصيل</th></tr></thead><tbody>`;
+  allOrders.forEach((o, i)=> {
+    html += `<tr><td>${i+1}</td><td>${escapeHtml(o.orderNum)}</td><td>${escapeHtml(o.supplyNum)}</td><td>${escapeHtml(o.date)}</td><td>${escapeHtml(o.person)}</td><td>${escapeHtml(o.details||'')}</td></tr>`;
   });
   html += '</tbody></table></body></html>'; 
   const w=window.open('','_blank'); 
@@ -2708,13 +2782,36 @@ function renderFaultTable(){
   const cardsDiv = document.getElementById('faultCards');
   cardsDiv.innerHTML = '';
   
-  // احسب pagination
-  const paginationData = paginate(faults, currentPageFaults);
-  const { items: pageFaults, totalPages } = paginationData;
+  // اقرأ شروط الفلترة الحالية
+  const q = (document.getElementById('search')?.value||'').toLowerCase();
+  const st = (document.getElementById('filterStatus')?.value||'').toLowerCase();
+  const dateFrom = document.getElementById('dateFromFault')?.value;
+  const dateTo = document.getElementById('dateToFault')?.value;
+
+  let dataToRender = [];
+  let totalPages = 1;
+  if(isFilteredFaults){
+    dataToRender = faults.filter(f => {
+      if(f.deleted) return false;
+      const text = `${f.machine||''} ${f.line||''} ${f.person||''} ${f.description||''} ${f.solution||''} ${f.status||''}`.toLowerCase();
+      const statusMatch = !st || text.includes(st);
+      const rowDate = f.date || '';
+      let dateMatch = true;
+      if(dateFrom && dateTo) dateMatch = (rowDate >= dateFrom && rowDate <= dateTo);
+      else if(dateFrom) dateMatch = (rowDate >= dateFrom);
+      else if(dateTo) dateMatch = (rowDate <= dateTo);
+      return ((!q || text.includes(q)) && statusMatch && dateMatch);
+    });
+    totalPages = 1;
+  } else {
+    const paginationData = paginate(faults, currentPageFaults);
+    dataToRender = paginationData.items;
+    totalPages = paginationData.totalPages;
+  }
   
-  pageFaults.forEach((f, pageIndex)=>{ 
+  dataToRender.forEach((f, pageIndex)=>{ 
     // الرقم العام (مع الترتيب التنازلي)
-    const globalIndex = (currentPageFaults - 1) * ITEMS_PER_PAGE + pageIndex + 1;
+    const globalIndex = isFilteredFaults ? pageIndex + 1 : (currentPageFaults - 1) * ITEMS_PER_PAGE + pageIndex + 1;
     
     // Table row
     const tr=document.createElement('tr'); 
@@ -2750,11 +2847,13 @@ function renderFaultTable(){
     cardsDiv.appendChild(card);
   });
   
-  // تحديث أزرار pagination
-  updatePaginationButtons('#faultsPagination', totalPages, currentPageFaults, (pageNum) => {
-    currentPageFaults = pageNum;
-    renderFaultTable();
-  });
+  // تحديث أزرار pagination - إخفاء إذا كانت مفلترة
+  if(!isFilteredFaults) {
+    updatePaginationButtons('#faultsPagination', totalPages, currentPageFaults, (pageNum) => {
+      currentPageFaults = pageNum;
+      renderFaultTable();
+    });
+  }
   
   saveAll(); 
 }
@@ -2765,13 +2864,34 @@ function renderOrderTable(){
   const cardsDiv = document.getElementById('orderCards');
   cardsDiv.innerHTML = '';
   
-  // احسب pagination
-  const paginationData = paginate(orders, currentPageOrders);
-  const { items: pageOrders, totalPages } = paginationData;
+  // اقرأ شروط الفلترة الحالية
+  const q=(document.getElementById('searchOrder')?.value||'').toLowerCase();
+  const dateFrom = document.getElementById('dateFromOrder')?.value;
+  const dateTo = document.getElementById('dateToOrder')?.value;
+
+  let dataToRender = [];
+  let totalPages = 1;
+  if(isFilteredOrders){
+    dataToRender = orders.filter(o => {
+      if(o.deleted) return false;
+      const text = `${o.orderNum||''} ${o.supplyNum||''} ${o.person||''} ${o.details||''}`.toLowerCase();
+      const rowDate = o.date || '';
+      let dateMatch = true;
+      if(dateFrom && dateTo) dateMatch = (rowDate >= dateFrom && rowDate <= dateTo);
+      else if(dateFrom) dateMatch = (rowDate >= dateFrom);
+      else if(dateTo) dateMatch = (rowDate <= dateTo);
+      return (!q || text.includes(q)) && dateMatch;
+    });
+    totalPages = 1;
+  } else {
+    const paginationData = paginate(orders, currentPageOrders);
+    dataToRender = paginationData.items;
+    totalPages = paginationData.totalPages;
+  }
   
-  pageOrders.forEach((o, pageIndex)=>{ 
+  dataToRender.forEach((o, pageIndex)=>{ 
     // الرقم العام (مع الترتيب التنازلي)
-    const globalIndex = (currentPageOrders - 1) * ITEMS_PER_PAGE + pageIndex + 1;
+    const globalIndex = isFilteredOrders ? pageIndex + 1 : (currentPageOrders - 1) * ITEMS_PER_PAGE + pageIndex + 1;
     
     // Table row
     const tr=document.createElement('tr'); 
@@ -2796,11 +2916,13 @@ function renderOrderTable(){
     cardsDiv.appendChild(card);
   }); 
   
-  // تحديث أزرار pagination
-  updatePaginationButtons('#ordersPagination', totalPages, currentPageOrders, (pageNum) => {
-    currentPageOrders = pageNum;
-    renderOrderTable();
-  });
+  // تحديث أزرار pagination - إخفاء إذا كانت مفلترة
+  if(!isFilteredOrders) {
+    updatePaginationButtons('#ordersPagination', totalPages, currentPageOrders, (pageNum) => {
+      currentPageOrders = pageNum;
+      renderOrderTable();
+    });
+  }
   
   saveAll(); 
 }
@@ -2811,20 +2933,40 @@ function renderMaintenanceTable(){
   const cardsDiv = document.getElementById('maintenanceCards');
   cardsDiv.innerHTML = '';
   
-  // احسب pagination
-  const paginationData = paginate(maintenance, currentPageMaintenance);
-  const { items: pageMaintenance, totalPages } = paginationData;
-  
-  pageMaintenance.forEach((m, pageIndex)=>{ 
-    // الرقم العام (مع الترتيب التنازلي)
-    const globalIndex = (currentPageMaintenance - 1) * ITEMS_PER_PAGE + pageIndex + 1;
-    
-    // Table row
-    const tr=document.createElement('tr'); 
-    tr.innerHTML = `<td>${globalIndex}</td><td>${escapeHtml(m.machine)}</td><td>${escapeHtml(m.line)}</td><td>${escapeHtml(m.person)}</td><td>${escapeHtml(m.date)}</td><td>${escapeHtml(m.lcode)}</td><td>${escapeHtml(m.partName)}</td><td>${escapeHtml(m.partQty)}</td><td>${escapeHtml(m.type)}</td><td>${escapeHtml(m.notes)}</td><td class="no-print actions"><button class="btn ghost" onclick="startEditMaintenance('${m.id}')">تعديل</button><button class="btn" onclick="moveToTrashMaintenance('${m.id}')">حذف</button></td>`; 
-    tbody.appendChild(tr); 
-    
-    // Card view for mobile
+  // قراءة شروط الفلترة الحالية (للمساعدة عند إعادة العرض)
+  const q = (document.getElementById('searchMaintenance')?.value||'').toLowerCase();
+  const filterType = (document.getElementById('filterMaintenanceType')?.value||'').trim();
+  const dateFrom = document.getElementById('dateFromMaintenance')?.value;
+  const dateTo = document.getElementById('dateToMaintenance')?.value;
+
+  // جهّز البيانات للعرض؛ عند وجود فلتر اعرض النتائج المفلترة مرة واحدة
+  let dataToRender = [];
+  let totalPages = 1;
+  if(isFilteredMaintenance){
+    dataToRender = maintenance.filter(m => {
+      if(m.deleted) return false;
+      const text = `${m.machine||''} ${m.line||''} ${m.person||''} ${m.partName||''} ${m.notes||''} ${m.type||''}`.toLowerCase();
+      const typeMatch = !filterType || ((m.type||'') === filterType);
+      const rowDate = m.date || '';
+      let dateMatch = true;
+      if(dateFrom && dateTo) dateMatch = (rowDate >= dateFrom && rowDate <= dateTo);
+      else if(dateFrom) dateMatch = (rowDate >= dateFrom);
+      else if(dateTo) dateMatch = (rowDate <= dateTo);
+      return ((!q || text.includes(q)) && typeMatch && dateMatch);
+    });
+    totalPages = 1;
+  } else {
+    const paginationData = paginate(maintenance, currentPageMaintenance);
+    dataToRender = paginationData.items;
+    totalPages = paginationData.totalPages;
+  }
+
+  dataToRender.forEach((m, pageIndex)=>{
+    const globalIndex = isFilteredMaintenance ? pageIndex + 1 : (currentPageMaintenance - 1) * ITEMS_PER_PAGE + pageIndex + 1;
+    const tr=document.createElement('tr');
+    tr.innerHTML = `<td>${globalIndex}</td><td>${escapeHtml(m.machine)}</td><td>${escapeHtml(m.line)}</td><td>${escapeHtml(m.person)}</td><td>${escapeHtml(m.date)}</td><td>${escapeHtml(m.lcode)}</td><td>${escapeHtml(m.partName)}</td><td>${escapeHtml(m.partQty)}</td><td>${escapeHtml(m.type)}</td><td>${escapeHtml(m.notes)}</td><td class="no-print actions"><button class="btn ghost" onclick="startEditMaintenance('${m.id}')">تعديل</button><button class="btn" onclick="moveToTrashMaintenance('${m.id}')">حذف</button></td>`;
+    tbody.appendChild(tr);
+
     const card = document.createElement('div');
     card.className = 'order-card';
     card.innerHTML = `
@@ -2845,13 +2987,15 @@ function renderMaintenanceTable(){
     `;
     cardsDiv.appendChild(card);
   });
-  
-  // تحديث أزرار pagination
-  updatePaginationButtons('#maintenancePagination', totalPages, currentPageMaintenance, (pageNum) => {
-    currentPageMaintenance = pageNum;
-    renderMaintenanceTable();
-  });
-  
+
+  // تحديث أزرار pagination - إخفاء إذا كانت مفلترة
+  if(!isFilteredMaintenance){
+    updatePaginationButtons('#maintenancePagination', totalPages, currentPageMaintenance, (pageNum) => {
+      currentPageMaintenance = pageNum;
+      renderMaintenanceTable();
+    });
+  }
+
   saveAll(); 
 }
 
@@ -2980,13 +3124,8 @@ saveAll();
       var mainType = document.getElementById('mainType');
 
       if(!mainGroup || mainGroup.value.trim()===''){ showAlert('من فضلك اختر المجموعة (الخط).', mainGroup); return false; }
-      // إذا كانت المجموعة "معمل الجودة"، تحقق من حقل اسم الماكينة
-      if(mainGroup && mainGroup.value === 'معمل الجودة'){
-        var customMainName = document.getElementById('customMainName');
-        if(!customMainName || customMainName.value.trim() === ''){ showAlert('من فضلك ادخل اسم الماكينة في معمل الجودة.', customMainName || mainGroup); return false; }
-      }
       // إذا كانت المجموعة "أخري"، اجعل اختيار الماكينة من القائمة غير إجباري، بدلًا منه تحقق من حقل المكان
-      else if(mainGroup && mainGroup.value === 'أخري'){
+      if(mainGroup && mainGroup.value === 'أخري'){
         var customMainPlace = document.getElementById('customMainPlace');
         if(!customMainPlace || customMainPlace.value.trim() === ''){ showAlert('من فضلك ادخل مكان الماكينة.', customMainPlace || mainGroup); return false; }
       } else {
