@@ -2504,16 +2504,21 @@ document.getElementById('printAttendanceBtn').removeEventListener('click', null)
 document.getElementById('printAttendanceBtn').addEventListener('click', ()=>{
   if(!attendance || !attendance.length){ alert('لا توجد بيانات للطباعة'); return; }
   
-  // احصل على كل سجلات الحضور الغير محذوفة
+  // احصل على كل سجلات الأجازات الغير محذوفة
   const allAttendance = attendance.filter(a => !a.deleted);
   if(!allAttendance.length){ alert('لا توجد بيانات للطباعة'); return; }
   
-  const title='تقرير الغياب'; 
+  const title='تقرير الأجازات'; 
   let html = `<html dir="rtl"><head><meta charset="utf-8"><title>${title}</title><style>body{font-family:Arial;direction:rtl;padding:16px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #666;padding:6px;text-align:right}</style></head><body>`;
-  html += `<div style="text-align:center"><h2>نظام إدارة الأعطال وأوامر الشراء — الكهرباء</h2><h3>${title}</h3><p>تاريخ: ${new Date().toLocaleDateString()}</p></div>`;
-  html += `<table><thead><tr><th>#</th><th>اسم العامل</th><th>رقم العامل</th><th>تاريخ التغيب</th><th>عدد الأيام</th><th>يوم التغيب</th></tr></thead><tbody>`;
+  html += `<div style="text-align:center"><h2>نظام إدارة الأعطال والصيانة وأوامر الشراء والأجازات — الكهرباء</h2><h3>${title}</h3><p>تاريخ: ${new Date().toLocaleDateString()}</p></div>`;
+  html += `<table><thead><tr><th>#</th><th>اسم العامل</th><th>رقم العامل</th><th>تاريخ الأجازة</th><th>عدد الأيام</th><th>يوم الأجازة</th></tr></thead><tbody>`;
   allAttendance.forEach((a, i)=> {
-    html += `<tr><td>${i+1}</td><td>${escapeHtml(a.personName)}</td><td>${escapeHtml(a.personId)}</td><td>${escapeHtml(a.date)}</td><td>${escapeHtml(a.days)}</td><td>${escapeHtml(a.dayType)}</td></tr>`;
+    const name = escapeHtml(a.workerName || a.personName || '');
+    const num = escapeHtml(a.workerNum || a.personId || '');
+    const date = escapeHtml(a.absenceDate || a.date || '');
+    const days = escapeHtml(a.daysCount || a.days || '');
+    const dayName = escapeHtml(a.absenceDay || a.dayType || '');
+    html += `<tr><td>${i+1}</td><td>${name}</td><td>${num}</td><td>${date}</td><td>${days}</td><td>${dayName}</td></tr>`;
   });
   html += '</tbody></table></body></html>'; 
   const w=window.open('','_blank'); 
