@@ -96,6 +96,17 @@
     nav,.no-print,.actions,.controls{display:none!important}
     body{background:#fff}
   }
+  /* Password modal (attendance access) */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);display:none;align-items:center;justify-content:center;z-index:9999}
+  .modal-overlay.active{display:flex}
+  .modal{background:#fff;padding:18px;border-radius:8px;min-width:320px;max-width:92%;box-shadow:0 6px 30px rgba(0,0,0,0.25);direction:rtl;text-align:right}
+  .modal h3{margin:0 0 8px;font-size:16px}
+  .modal .modal-row{margin-top:8px}
+  .modal input[type="password"]{width:100%;padding:8px;border:1px solid #ccc;border-radius:6px}
+  .modal .modal-actions{display:flex;gap:8px;margin-top:12px;justify-content:flex-end}
+  .modal .modal-actions button{padding:8px 12px;border-radius:6px;border:0;cursor:pointer}
+  .modal .btn-primary{background:var(--primary);color:#fff}
+  .modal .btn-ghost{background:#eee}
 </style>
 </head>
 <body>
@@ -472,6 +483,19 @@
       </div>
       </div>
       <div id="attendanceCards" class="card-view"></div>
+
+      <!-- Password modal for attendance cards (keeps cards hidden unless unlocked) -->
+      <div id="attendancePasswordModal" class="modal-overlay" aria-hidden="true" role="dialog">
+        <div class="modal" role="document" aria-labelledby="attendancePasswordTitle">
+          <h3 id="attendancePasswordTitle">فتح عرض سجلات الأجازات</h3>
+          <div class="modal-row">ادخل كلمة المرور لعرض بطاقات الأجازات.</div>
+          <div class="modal-row"><input id="attendancePasswordInput" type="password" placeholder="كلمة المرور" /></div>
+          <div class="modal-actions">
+            <button id="attendancePasswordCancel" class="btn btn-ghost">إلغاء</button>
+            <button id="attendancePasswordSubmit" class="btn btn-primary">فتح</button>
+          </div>
+        </div>
+      </div>
 
       <div id="attendancePagination" style="margin-top:12px; text-align:center; display:flex; gap:6px; justify-content:center; flex-wrap:wrap"></div>
 
@@ -2087,6 +2111,8 @@ function addAttendance(){
     });
   
   attendance.unshift(a);
+  // Unlock attendance for this session and mark that only the newly added record should be visible
+  try{ sessionStorage.setItem('attendanceUnlocked','true'); sessionStorage.setItem('attendanceVisibleOnlyId', a.id); }catch(e){}
   clearAttendanceForm(); currentPageAttendance = 1; renderAttendanceTable(); show('attendance');
   showSuccess('تم الإدخال');
 }
@@ -2221,7 +2247,14 @@ function renderAttendanceTable(){
   tbody.innerHTML=''; 
   const cardsDiv = document.getElementById('attendanceCards'); 
   cardsDiv.innerHTML=''; 
-  
+  const attendanceUnlocked = (sessionStorage.getItem('attendanceUnlocked') === 'true');
+  // إذا كانت البطاقات/الطاولة مقفلة، لا نعرض أي بيانات على الديسكتوب أو الموبايل
+  if(!attendanceUnlocked){
+    try{ document.getElementById('attendancePagination').style.display = 'none'; }catch(e){}
+    // leave table and cards empty while locked
+    saveAll();
+    return;
+  }
   // اقرأ شروط الفلترة الحالية
   const q = (document.getElementById('searchAttendance')?.value||'').toLowerCase();
   const dateFrom = document.getElementById('dateFromAttendance')?.value;
@@ -2229,8 +2262,23 @@ function renderAttendanceTable(){
 
   let dataToRender = [];
   let totalPages = 1;
+  const visibleOnlyId = sessionStorage.getItem('attendanceVisibleOnlyId');
+  if(visibleOnlyId){
+    const found = attendance.find(x=>x.id === visibleOnlyId && !x.deleted);
+    if(found){ dataToRender = [found]; totalPages = 1; }
+    else {
+      // If the requested visible-only record isn't loaded yet, do not fall back
+      // to showing all records (this prevents unlocking from exposing all cards
+      // before data arrives). Hide pagination and return early.
+      try{ document.getElementById('attendancePagination').style.display = 'none'; }catch(e){}
+      saveAll();
+      return;
+    }
+  }
+  
   if(isFilteredAttendance){
-    dataToRender = attendance.filter(a => {
+    if(!visibleOnlyId){
+      dataToRender = attendance.filter(a => {
       if(a.deleted) return false;
       const name = (a.workerName || a.personName || a.empName || a.emp || '').toString();
       const text = `${name} ${a.workerNum||a.personId||''} ${a.absenceDate||a.date||''} ${a.notes||''}`.toLowerCase();
@@ -2242,10 +2290,13 @@ function renderAttendanceTable(){
       return (!q || text.includes(q)) && dateMatch;
     });
     totalPages = 1;
+    }
   } else {
-    const paginationData = paginate(attendance, currentPageAttendance);
-    dataToRender = paginationData.items;
-    totalPages = paginationData.totalPages;
+    if(!visibleOnlyId){
+      const paginationData = paginate(attendance, currentPageAttendance);
+      dataToRender = paginationData.items;
+      totalPages = paginationData.totalPages;
+    }
   }
 
   dataToRender.forEach((a, pageIndex)=>{
@@ -2259,23 +2310,24 @@ function renderAttendanceTable(){
     tr.innerHTML = `<td>${globalIndex}</td><td>${name}</td><td>${num}</td><td>${date}</td><td>${days}</td><td>${dayName}</td><td class="no-print actions"><button class="btn ghost" onclick="startEditAttendance('${a.id}')">تعديل</button><button class="btn" onclick="deleteAttendance('${a.id}')">حذف</button></td>`; 
     tbody.appendChild(tr);
 
-    const card = document.createElement('div'); 
-    card.className='order-card'; 
+    const card = document.createElement('div');
+    card.className = 'order-card';
+    // Minimal attendance card for mobile: show same columns as desktop table
     card.innerHTML = `
-      <div style="text-align:center;font-weight:600;margin-bottom:12px;font-size:15px;padding-bottom:8px;border-bottom:2px solid #e9eef3">حضور #${globalIndex}</div>
-      <div class="order-card-row"><div class="order-card-label">الموظف:</div><div class="order-card-value">${displayValue(name)}</div></div>
-      <div class="order-card-row"><div class="order-card-label">القسم:</div><div class="order-card-value">${displayValue(a.department || '')}</div></div>
-      <div class="order-card-row"><div class="order-card-label">التاريخ:</div><div class="order-card-value">${displayValue(date)}</div></div>
-      <div class="order-card-row"><div class="order-card-label">الدخول:</div><div class="order-card-value">${displayValue(a.checkIn || '')}</div></div>
-      <div class="order-card-row"><div class="order-card-label">الخروج:</div><div class="order-card-value">${displayValue(a.checkOut || '')}</div></div>
-      <div class="order-card-row"><div class="order-card-label">الساعات:</div><div class="order-card-value">${displayValue(a.hours || '')}</div></div>
-      <div class="order-card-row"><div class="order-card-label">الملاحظات:</div><div class="order-card-value">${displayValue(a.notes || '')}</div></div>
+      <div style="text-align:center;font-weight:600;margin-bottom:12px;font-size:15px;padding-bottom:8px;border-bottom:2px solid #e9eef3">إجازة #${globalIndex}</div>
+      <div class="order-card-row"><div class="order-card-label">اسم العامل:</div><div class="order-card-value">${displayValue(name)}</div></div>
+      <div class="order-card-row"><div class="order-card-label">رقم العامل:</div><div class="order-card-value">${displayValue(num)}</div></div>
+      <div class="order-card-row"><div class="order-card-label">تاريخ التغيب:</div><div class="order-card-value">${displayValue(date)}</div></div>
+      <div class="order-card-row"><div class="order-card-label">عدد الأيام:</div><div class="order-card-value">${displayValue(days)}</div></div>
+      <div class="order-card-row"><div class="order-card-label">يوم التغيب:</div><div class="order-card-value">${displayValue(dayName)}</div></div>
       <div class="order-card-actions">
         <button class="btn ghost" onclick="startEditAttendance('${a.id}')">تعديل</button>
         <button class="btn" onclick="deleteAttendance('${a.id}')">حذف</button>
       </div>
-    `; 
-    cardsDiv.appendChild(card);
+    `;
+    if(attendanceUnlocked){
+      cardsDiv.appendChild(card);
+    }
   }); 
 
   // تحديث أزرار pagination - إخفاء إذا كانت مفلترة
@@ -2289,6 +2341,81 @@ function renderAttendanceTable(){
   saveAll(); 
 }
 
+/* Attendance password modal and controls */
+const ATTENDANCE_PASSWORD = 'CBE_ELEC@2026'; // <-- غيّر هذه الكلمة حسب الحاجة
+
+function showAttendancePasswordModal(){
+  const modal = document.getElementById('attendancePasswordModal');
+  const input = document.getElementById('attendancePasswordInput');
+  if(!modal) return;
+  modal.classList.add('active');
+  modal.setAttribute('aria-hidden','false');
+  input.value = '';
+  setTimeout(()=>input.focus(),50);
+}
+
+function closeAttendancePasswordModal(){
+  const modal = document.getElementById('attendancePasswordModal');
+  if(!modal) return;
+  modal.classList.remove('active');
+  modal.setAttribute('aria-hidden','true');
+}
+
+function unlockAttendanceCards(){
+  sessionStorage.setItem('attendanceUnlocked','true');
+  // Re-render to show cards
+  renderAttendanceTable();
+  closeAttendancePasswordModal();
+}
+
+function checkAttendancePassword(){
+  const val = document.getElementById('attendancePasswordInput').value || '';
+  if(val === ATTENDANCE_PASSWORD){ unlockAttendanceCards(); }
+  else { alert('كلمة المرور خاطئة'); }
+}
+
+document.getElementById('attendancePasswordSubmit')?.addEventListener('click', checkAttendancePassword);
+document.getElementById('attendancePasswordCancel')?.addEventListener('click', closeAttendancePasswordModal);
+document.getElementById('attendancePasswordInput')?.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') checkAttendancePassword(); if(e.key==='Escape') closeAttendancePasswordModal(); });
+
+// Add a small placeholder button to allow opening modal when locked
+function ensureAttendanceLockedPlaceholder(){
+  const cardsDiv = document.getElementById('attendanceCards');
+  if(!cardsDiv) return;
+  // remove existing placeholder if any
+  const existing = document.getElementById('attendanceCardsLockedPlaceholder');
+  if(existing) existing.remove();
+  const unlocked = (sessionStorage.getItem('attendanceUnlocked') === 'true');
+  if(!unlocked){
+    const ph = document.createElement('div');
+    ph.id = 'attendanceCardsLockedPlaceholder';
+    ph.className = 'box';
+    ph.style.textAlign = 'center';
+    ph.style.padding = '12px';
+    ph.style.marginTop = '8px';
+    ph.innerHTML = `<div style="margin-bottom:8px;font-weight:600">عرض بطاقات الأجازات مقفل</div><button class="btn" id="openAttendancePasswordBtn">فتح بكلمة مرور</button>`;
+    cardsDiv.parentNode.insertBefore(ph, cardsDiv.nextSibling);
+    document.getElementById('openAttendancePasswordBtn')?.addEventListener('click', showAttendancePasswordModal);
+    // hide the cards container itself so it won't appear via CSS rules
+    cardsDiv.style.display = 'none';
+    // also hide the table view and disable related controls to prevent desktop exposure
+    const tableView = document.querySelector('#attendanceTable')?.closest('.table-view');
+    if(tableView) tableView.style.display = 'none';
+    const idsToHide = ['exportAttendanceCsv','exportAttendanceDoc','applyAttendanceFilterBtn','applyDateFilterAttendanceBtn','printAttendanceCurrentPage','printAttendanceBtn','attendancePagination','searchAttendance'];
+    idsToHide.forEach(id=>{ const el = document.getElementById(id); if(el) el.style.display = 'none'; });
+  } else {
+    cardsDiv.style.display = '';
+    const tableView = document.querySelector('#attendanceTable')?.closest('.table-view');
+    if(tableView) tableView.style.display = '';
+    const idsToShow = ['exportAttendanceCsv','exportAttendanceDoc','applyAttendanceFilterBtn','applyDateFilterAttendanceBtn','printAttendanceCurrentPage','printAttendanceBtn','attendancePagination','searchAttendance'];
+    idsToShow.forEach(id=>{ const el = document.getElementById(id); if(el) el.style.display = ''; });
+  }
+}
+
+// call placeholder updater after render
+const _origRenderAttendanceTable = renderAttendanceTable;
+renderAttendanceTable = function(){ _origRenderAttendanceTable(); ensureAttendanceLockedPlaceholder(); }
+
 /* Attendance filters & exports */
 document.getElementById('applyAttendanceFilterBtn').addEventListener('click', applyAttendanceFilters);
 function applyAttendanceFilters(){ 
@@ -2297,8 +2424,8 @@ function applyAttendanceFilters(){
   const dateTo = document.getElementById('dateToAttendance')?.value;
 
   // Ensure card-view is visible on mobile
-  const cardsContainer = document.getElementById('attendanceCards');
-  if(cardsContainer) cardsContainer.style.display = '';
+  // Update locked placeholder / visibility
+  ensureAttendanceLockedPlaceholder();
 
   // Set filtered state based on inputs
   const active = Boolean(q || dateFrom || dateTo);
@@ -2740,6 +2867,10 @@ function drawDashboard(){
 }
 
 /* init render */
+// تأكد من طلب كلمة المرور بعد كل تحديث/ريفرش بإزالة العلم المخزن عند تحميل الصفحة
+try{ sessionStorage.removeItem('attendanceUnlocked'); }catch(e){}
+// أيضاً أزل معرف السجل الوحيد لعرض كل السجلات بعد الريفرش عند إدخال كلمة المرور
+try{ sessionStorage.removeItem('attendanceVisibleOnlyId'); }catch(e){}
 renderFaultTable(); renderOrderTable(); renderMaintenanceTable(); renderAttendanceTable(); renderTrash(); drawDashboard();
 
 function loadFromServer() {
