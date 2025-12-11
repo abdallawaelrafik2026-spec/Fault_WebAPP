@@ -94,7 +94,23 @@
   }
   @media print{
     nav,.no-print,.actions,.controls{display:none!important}
-    body{background:#fff}
+    body{background:#fff;margin:0;padding:0;font-size:12px}
+    .box,section,header{padding:0!important;margin:0!important;box-shadow:none!important}
+    .summary-title{font-size:18px!important}
+    .summary-desc{font-size:13px!important}
+    .summary-date{font-size:12px!important}
+    .summary-total{font-size:13px!important;padding:6px 0!important}
+    .group-title{font-size:15px!important;padding:6px 0!important}
+    .cards-wrap{flex-wrap:wrap!important;gap:8px!important}
+    .summary-card{min-width:120px!important;max-width:160px!important;padding:10px 8px!important;margin-bottom:6px!important}
+    .card-title{font-size:13px!important}
+    .card-count{font-size:15px!important;padding:4px 8px!important}
+    table{font-size:11px!important}
+    th,td{padding:4px!important}
+    h2,h3{font-size:15px!important;margin:4px 0!important}
+    .footer{font-size:10px!important;margin-top:10px!important}
+    .group-section{margin-bottom:12px!important}
+    .cards-wrap,.summary-card{flex-direction:column!important;align-items:stretch!important}
   }
   /* Password modal (attendance access) */
   .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);display:none;align-items:center;justify-content:center;z-index:9999}
@@ -534,7 +550,7 @@
       <div class="table-responsive">
       <table id="trashOrders"><thead><tr><th>أمر</th><th>توريد</th><th class="no-print">أوامر</th></tr></thead><tbody></tbody></table>
       </div>
-      <h4 style="margin-top:12px">سجلات الحضور المحذوفة</h4>
+      <h4 style="margin-top:12px">سجلات الغياب المحذوفة</h4>
       <div class="table-responsive">
       <table id="trashAttendance"><thead><tr><th>#</th><th>اسم العامل / رقم</th><th>تاريخ التغيب</th><th class="no-print">أوامر</th></tr></thead><tbody></tbody></table>
       </div>
@@ -3023,7 +3039,7 @@ document.getElementById('printFaultsSummaryBtn')?.addEventListener('click', func
   html += `<div class=\"header-logo\"></div>`;
   // html += `<div class=\"header-logo\"></div>`;
   html += `<div class=\"summary-title\">ملخص الأعطال حسب قوائم الماكينات</div>`;
-  html += `<div class=\"summary-desc\">تقرير احترافي يوضح توزيع الأعطال لكل مجموعة وماكيناتها</div>`;
+  html += `<div class=\"summary-desc\">تقرير يوضح توزيع الأعطال لكل مجموعة وماكيناتها</div>`;
   html += `<div class=\"summary-date\">تاريخ الإنشاء: ${new Date().toLocaleDateString()}</div>`;
   html += `<div class=\"summary-total\">إجمالي الأعطال: ${totalFaults.toLocaleString('ar-EG')}</div>`;
   html += searchSummaryHtml;
@@ -3097,7 +3113,7 @@ document.getElementById('printMaintenanceSummaryBtn')?.addEventListener('click',
     .footer{margin-top:30px;text-align:center;color:#888;font-size:14px;letter-spacing:1px}
   </style></head><body>`;
   html += `<div class=\"summary-title\">ملخص الصيانة حسب قوائم الماكينات</div>`;
-  html += `<div class=\"summary-desc\">تقرير احترافي يوضح توزيع الصيانة لكل مجموعة وماكيناتها وأنواع الصيانة</div>`;
+  html += `<div class=\"summary-desc\">تقرير يوضح توزيع الصيانة لكل مجموعة وماكيناتها وأنواع الصيانة</div>`;
   html += `<div class=\"summary-date\">تاريخ الإنشاء: ${new Date().toLocaleDateString()}</div>`;
   html += `<div class=\"summary-total\">إجمالي عمليات الصيانة: ${totalMaint.toLocaleString('ar-EG')}</div>`;
   Object.entries(maintByGroup).forEach(([group, machines]) => {
