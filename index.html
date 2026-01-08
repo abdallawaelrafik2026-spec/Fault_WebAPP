@@ -931,7 +931,6 @@ function showLatestFaultNotification() {
 الحالة: ${latestFault.status}`;
     
     showNotification('آخر عطل مسجل', faultInfo);
-    sendEmailNotification('آخر عطل مسجل', faultInfo);
   }
 }
 
@@ -962,7 +961,6 @@ function showLatestMaintenanceNotification() {
 الكمية: ${latestMaintenance.partQty || '-'}` : ''}`;
     
     showNotification('آخر صيانة مسجلة', mainInfo);
-    sendEmailNotification('آخر صيانة مسجلة', mainInfo);
   }
 }
 
@@ -988,7 +986,6 @@ function showLatestOrderNotification() {
 القائم: ${latestOrder.person}`;
     
     showNotification('آخر أمر شراء مسجل', orderInfo);
-    sendEmailNotification('آخر أمر شراء مسجل', orderInfo);
   }
 }
 
@@ -1014,7 +1011,6 @@ function showLatestAttendanceNotification() {
 النوع: ${latestAtt.vacationType}`;
     
     showNotification('آخر أجازة مسجلة', attInfo);
-    sendEmailNotification('آخر أجازة مسجلة', attInfo);
   }
 }
 
@@ -1023,7 +1019,6 @@ window.addEventListener('load', function() {
   setTimeout(function() {
     const welcomeTime = new Date().toLocaleTimeString('ar-EG');
     showNotification('مرحباً بك', 'تم الدخول إلى النظام - ' + welcomeTime);
-    sendEmailNotification('دخول المستخدم للنظام', 'تم الدخول إلى نظام إدارة الأعطال والصيانة في ' + welcomeTime);
   }, 500);
 });
 
@@ -1041,7 +1036,6 @@ window.addEventListener('pageshow', function(event) {
     // تحديث جديد
     const time = new Date().toLocaleTimeString('ar-EG');
     showNotification('تحديث النظام', 'تم تحديث الصفحة - ' + time);
-    sendEmailNotification('تحديث النظام', 'تم تحديث نظام إدارة الأعطال والصيانة في ' + time);
   }
 });
 
@@ -1180,8 +1174,6 @@ function notifyAction(actionType, itemType, itemName = '') {
   const msg = messages[actionType];
   if(msg) {
     showNotification(msg.title, msg.message);
-    // محاولة إرسال بريد إلكتروني (يتطلب API)
-    sendEmailNotification(msg.title, msg.message);
   }
 }
 
