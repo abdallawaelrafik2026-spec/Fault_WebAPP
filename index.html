@@ -83,6 +83,7 @@
     /* Show cards on mobile, hide table */
     .table-view{display:none !important}
     .card-view{display:block !important}
+    .home-btn{padding:8px 14px !important}
   }
   
   @media (max-width:480px){
@@ -123,6 +124,44 @@
   .modal .modal-actions button{padding:8px 12px;border-radius:6px;border:0;cursor:pointer}
   .modal .btn-primary{background:var(--primary);color:#fff}
   .modal .btn-ghost{background:#eee}
+
+  /* Home fullscreen simple page */
+  #page_home.home-fullscreen{min-height:calc(100vh - 0px);display:flex;align-items:center;justify-content:center;background:#fff}
+  #page_home.home-fullscreen .home-inner{max-width:920px;margin:0 auto;padding:24px}
+  #page_home.home-fullscreen h1{font-size:32px;margin-bottom:8px;color:var(--primary);font-weight:700}
+  #page_home.home-fullscreen p.lead{color:var(--muted);margin-bottom:18px;font-size:15px}
+  /* professional button list */
+  #page_home .home-buttons{display:grid;grid-template-columns:1fr;gap:12px;width:360px;margin:0 auto}
+  @media(min-width:760px){ #page_home .home-buttons{width:420px} }
+  .home-btn{display:flex;align-items:center;gap:12px;padding:14px 18px;font-size:16px;border-radius:12px;border:1px solid rgba(10,76,136,0.08);background:#fff;box-shadow:0 6px 18px rgba(10,76,136,0.06);cursor:pointer;transition:transform .14s ease,box-shadow .14s ease}
+  .home-btn:hover{transform:translateY(-6px);box-shadow:0 16px 36px rgba(10,76,136,0.12)}
+  .home-btn .icon{width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;border-radius:10px;background:rgba(10,76,136,0.06);color:var(--primary);font-size:18px}
+  .home-btn .label{flex:1;text-align:right;font-weight:700;color:#08365F;font-size:17px}
+  .home-btn.secondary .icon{background:rgba(255,112,67,0.08);color:#ff7043}
+  .home-btn.success .icon{background:rgba(76,175,80,0.08);color:#4caf50}
+  .home-btn.info .icon{background:rgba(0,151,167,0.08);color:#0097a7}
+  .home-btn.ghost{background:#fafafa}
+  .home-btn.contrast .label{color:#fff}
+  .home-btn.contrast .icon{background:rgba(255,255,255,0.12);color:#fff}
+  /* Mobile tweaks: larger touch targets and spacing */
+  @media(max-width:420px){
+    #page_home.home-fullscreen{padding:20px}
+    #page_home .home-inner{padding:8px}
+    #page_home .home-buttons{gap:14px;width:100%}
+    .home-btn{padding:18px 16px;font-size:18px;border-radius:12px}
+    .home-btn .icon{width:46px;height:46px}
+    .home-btn .label{font-size:17px}
+  }
+  /* Mobile-only entry animations for home buttons */
+  @media(max-width:420px){
+    .home-btn{opacity:0;transform:translateY(12px)}
+    @keyframes fadeUpMobile{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+    #page_home .home-buttons .home-btn:nth-child(1){animation:fadeUpMobile .42s ease .08s forwards}
+    #page_home .home-buttons .home-btn:nth-child(2){animation:fadeUpMobile .42s ease .14s forwards}
+    #page_home .home-buttons .home-btn:nth-child(3){animation:fadeUpMobile .42s ease .20s forwards}
+    #page_home .home-buttons .home-btn:nth-child(4){animation:fadeUpMobile .42s ease .26s forwards}
+    #page_home .home-buttons .home-btn:nth-child(5){animation:fadeUpMobile .42s ease .32s forwards}
+  }
 </style>
 </head>
 <body>
@@ -138,9 +177,53 @@
   <button id="navAttendance">الأجازات</button>
   <button id="navTrash">سلة المحذوفات</button>
   <button id="navDash">Dashboard</button>
+  <button id="navHome">الرئيسية</button>
 </nav>
 
 <section>
+  <div id="page_home" class="page home-fullscreen">
+    <div class="home-inner">
+      <h1 style="margin:0 0 12px;text-align:center;color:var(--primary)">نظام إدارة الأعطال والصيانة وأوامر الشراء والأجازات (الكهرباء)</h1>
+      <p class="lead" style="text-align:center;margin:0 0 20px;color:var(--muted)">اختر القسم للبدء</p>
+      <div class="home-buttons">
+        <button class="btn home-btn contrast" style="background:#e53935" onclick="show('faults');setTimeout(()=>showLatestFaultNotification(),350)">
+          <span class="icon" aria-hidden>
+            <!-- Original Warning / Fault SVG -->
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 21h22L12 2 1 21z" fill="#fff"/><path d="M13 16h-2v2h2v-2zm0-8h-2v6h2V8z" fill="#000"/></svg>
+          </span>
+          <span class="label">الأعطال</span>
+        </button>
+        <button class="btn home-btn secondary" style="background:#ff7043" onclick="show('maintenance');setTimeout(()=>showLatestMaintenanceNotification(),350)">
+          <span class="icon" aria-hidden>
+            <!-- Original Wrench / Maintenance SVG -->
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M22.7 19.3l-2-2c-.4-.4-1-.4-1.4 0l-1.1 1.1c-1.3-.5-2.7-1-4-1.6l.7-1.7-6.1-6.1-1.7.7c-.6-1.3-1.1-2.7-1.6-4L7.6 4c.2-.6.1-1.2-.4-1.7L4.2.9C3.8.5 3.2.5 2.8.9L1.3 2.4C.9 2.8.8 3.4 1 3.9c1.2 4 2.5 7.9 3.7 11.9 1.2 3.9 4.3 7 8.2 8.2 4 .2 7.9-1 11.9-3.7.5-.2.8-.8.4-1.2l-1.5-1.5c-.5-.4-1.1-.4-1.5 0l-1.6 1.6c-.5.5-1.1.4-1.5 0z" fill="#fff"/></svg>
+          </span>
+          <span class="label">الصيانة</span>
+        </button>
+        <button class="btn home-btn success" style="background:#4caf50" onclick="show('orders');setTimeout(()=>showLatestOrderNotification(),350)">
+          <span class="icon" aria-hidden>
+            <!-- Original Cart / Orders SVG -->
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 4h-2l-1 2h2l1-2zm0 0h10l1.2 6H6.8L7 4zM6 20a2 2 0 100-4 2 2 0 000 4zm10 0a2 2 0 100-4 2 2 0 000 4z" fill="#fff"/></svg>
+          </span>
+          <span class="label">أوامر الشراء</span>
+        </button>
+        <button class="btn home-btn info" style="background:#0097a7" onclick="show('attendance');setTimeout(()=>showLatestAttendanceNotification(),350)">
+          <span class="icon" aria-hidden>
+            <!-- Original Calendar / Attendance SVG -->
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 10h5v5H7z" fill="#fff"/><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v13a2 2 0 002 2h14a2 2 0 002-2V6c0-1.1-.9-2-2-2z" fill="#fff"/></svg>
+          </span>
+          <span class="label">الأجازات</span>
+        </button>
+        <button class="btn home-btn contrast" style="background:#3949ab" onclick="show('dash');">
+          <span class="icon" aria-hidden>
+            <!-- Original Chart / Dashboard SVG -->
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 13h4v8H3v-8zm6-6h4v14h-4V7zm6-4h4v18h-4V3z" fill="#fff"/></svg>
+          </span>
+          <span class="label">Dashboard</span>
+        </button>
+      </div>
+    </div>
+  </div>
   <!-- FAULTS -->
   <div id="page_faults" class="page">
     <div class="box">
@@ -762,6 +845,7 @@ const navOrders = document.getElementById('navOrders');
 const navAttendance = document.getElementById('navAttendance');
 const navTrash = document.getElementById('navTrash');
 const navDash = document.getElementById('navDash');
+const navHome = document.getElementById('navHome');
 
 navFaults.onclick = ()=>{show('faults'); setTimeout(()=>showLatestFaultNotification(), 500);};
 navMaintenance.onclick = ()=>{show('maintenance'); setTimeout(()=>showLatestMaintenanceNotification(), 500);};
@@ -769,10 +853,28 @@ navOrders.onclick = ()=>{show('orders'); setTimeout(()=>showLatestOrderNotificat
 navAttendance.onclick = ()=>{show('attendance'); setTimeout(()=>showLatestAttendanceNotification(), 500);};
 navTrash.onclick = ()=>show('trash');
 navDash.onclick = ()=>show('dash');
+if(navHome) navHome.onclick = ()=>show('home');
 
 function show(page){
   document.querySelectorAll('.page').forEach(p=>p.style.display='none');
   document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  // Handle home page: hide header/nav for a clean white landing
+  if(page === 'home'){
+    const headerEl = document.querySelector('header');
+    const navEl = document.querySelector('nav');
+    if(headerEl) headerEl.style.display = 'none';
+    if(navEl) navEl.style.display = 'none';
+    document.body.style.background = '#fff';
+    const el = document.getElementById('page_home'); if(el) { el.classList.add('home-fullscreen'); el.style.display = 'block'; }
+    return;
+  }
+  // restore header/nav when not on home
+  const headerEl = document.querySelector('header');
+  const navEl = document.querySelector('nav');
+  if(headerEl) headerEl.style.display = '';
+  if(navEl) navEl.style.display = '';
+  document.body.style.background = '';
+
   if(page==='faults'){ document.getElementById('page_faults').style.display='block'; navFaults.classList.add('active'); stopTrashSync(); }
   if(page==='maintenance'){ document.getElementById('page_maintenance').style.display='block'; navMaintenance.classList.add('active'); stopTrashSync(); }
   if(page==='orders'){ document.getElementById('page_orders').style.display='block'; navOrders.classList.add('active'); stopTrashSync(); }
@@ -780,7 +882,25 @@ function show(page){
   if(page==='trash'){ document.getElementById('page_trash').style.display='block'; navTrash.classList.add('active'); startTrashSync(); }
   if(page==='dash'){ document.getElementById('page_dash').style.display='block'; navDash.classList.add('active'); drawDashboard(); stopTrashSync(); }
 }
-show('faults');
+show('home');
+
+// دالة لتصغير حجم عنوان الصفحة الرئيسية في وضع الهاتف
+function adjustHomePageTitleSize() {
+  const homeTitle = document.querySelector('#page_home h1');
+  if (homeTitle) {
+    if (window.innerWidth <= 600) {
+      homeTitle.style.fontSize = '20px';
+    } else {
+      homeTitle.style.fontSize = '';
+    }
+  }
+}
+
+// استدعاء الدالة عند تحميل الصفحة
+window.addEventListener('load', adjustHomePageTitleSize);
+
+// استدعاء الدالة عند تغيير حجم النافذة
+window.addEventListener('resize', adjustHomePageTitleSize);
 
 /* ═════════════════════════════════════════════════════════════════
    إشعارات الدخول والتحديث
@@ -790,12 +910,13 @@ show('faults');
 function showLatestFaultNotification() {
   if(faults && faults.length > 0) {
     // البحث عن آخر عطل تم تسجيله فعلياً بناءً على التاريخ (الأحدث)
+    // وإذا تكرر التاريخ، اختر آخر عطل تم إضافته في نفس التاريخ
     let latestFault = faults[0];
     let latestDate = new Date(latestFault.date || 0).getTime();
     
     for(let i = 1; i < faults.length; i++) {
       const faultDate = new Date(faults[i].date || 0).getTime();
-      if(faultDate > latestDate) {
+      if(faultDate >= latestDate) {
         latestDate = faultDate;
         latestFault = faults[i];
       }
@@ -817,13 +938,14 @@ function showLatestFaultNotification() {
 // دالة لعرض آخر صيانة تم تسجيلها
 function showLatestMaintenanceNotification() {
   if(maintenance && maintenance.length > 0) {
-    // البحث عن آخر صيانة تم تسجيلها بناءً على التاريخ (الأحدث)
+    // البحث عن آخر صيانة تم تسجيلها فعلياً بناءً على التاريخ (الأحدث)
+    // وإذا تكرر التاريخ، اختر آخر صيانة تم إضافتها في نفس التاريخ
     let latestMaintenance = maintenance[0];
     let latestDate = new Date(latestMaintenance.date || 0).getTime();
     
     for(let i = 1; i < maintenance.length; i++) {
       const maintDate = new Date(maintenance[i].date || 0).getTime();
-      if(maintDate > latestDate) {
+      if(maintDate >= latestDate) {
         latestDate = maintDate;
         latestMaintenance = maintenance[i];
       }
@@ -832,8 +954,12 @@ function showLatestMaintenanceNotification() {
     const mainInfo = `
 الماكينة: ${latestMaintenance.machine}
 القائم: ${latestMaintenance.person}
+النوع: ${latestMaintenance.type}
 التاريخ: ${latestMaintenance.date}
-النوع: ${latestMaintenance.type}`;
+الملاحظات: ${latestMaintenance.notes || '-'}
+تغيير قطع غيار: ${latestMaintenance.partChanged === 'yes' ? 'نعم' : 'لا'}${latestMaintenance.partChanged === 'yes' ? `
+اسم القطعة: ${latestMaintenance.partName || '-'}
+الكمية: ${latestMaintenance.partQty || '-'}` : ''}`;
     
     showNotification('آخر صيانة مسجلة', mainInfo);
     sendEmailNotification('آخر صيانة مسجلة', mainInfo);
@@ -898,11 +1024,6 @@ window.addEventListener('load', function() {
     const welcomeTime = new Date().toLocaleTimeString('ar-EG');
     showNotification('مرحباً بك', 'تم الدخول إلى النظام - ' + welcomeTime);
     sendEmailNotification('دخول المستخدم للنظام', 'تم الدخول إلى نظام إدارة الأعطال والصيانة في ' + welcomeTime);
-    
-    // عرض آخر عطل بعد ثانية
-    setTimeout(function() {
-      showLatestFaultNotification();
-    }, 1000);
   }, 500);
 });
 
@@ -916,17 +1037,11 @@ window.addEventListener('pageshow', function(event) {
     // عودة من cache (الزر الخلفي)
     const time = new Date().toLocaleTimeString('ar-EG');
     showNotification('عودة للصفحة', 'تم استعادة البيانات - ' + time);
-    setTimeout(function() {
-      showLatestFaultNotification();
-    }, 1000);
   } else {
     // تحديث جديد
     const time = new Date().toLocaleTimeString('ar-EG');
     showNotification('تحديث النظام', 'تم تحديث الصفحة - ' + time);
     sendEmailNotification('تحديث النظام', 'تم تحديث نظام إدارة الأعطال والصيانة في ' + time);
-    setTimeout(function() {
-      showLatestFaultNotification();
-    }, 1000);
   }
 });
 
@@ -2079,6 +2194,7 @@ function addMaintenance(){
     });
   
   maintenance.unshift(m); 
+  saveAll();
   clearMaintenanceForm(); 
   currentPageMaintenance = 1;
   renderMaintenanceTable(); 
@@ -2086,6 +2202,8 @@ function addMaintenance(){
   // إرسال إشعار عند إضافة صيانة
   notifyAction('maintenance_added', 'maintenance', m.machine);
   showSuccess('تم الإدخال');
+  // عرض إشعار الصيانة الأخيرة مباشرة
+  showLatestMaintenanceNotification();
 }
 
 function startEditMaintenance(id){
